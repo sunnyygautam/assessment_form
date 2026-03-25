@@ -13,8 +13,25 @@ function App() {
 
   const userId = "user1"; // later replace with login user
   const [draftId, setDraftId] = useState(null);
-// 🔹 Save Draft API
 
+  const isTokenExpired = (token) => {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch (err) {
+      return true;
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+
+    setIsAuth(false);
+
+    window.location.reload(); // optional but clean reset
+  };
+// 🔹 Save Draft API
 const saveDraft = async () => {
   try {
     await api.post("/api/draft", {
@@ -45,20 +62,27 @@ const handleSubmit = async () => {
 useEffect(() => {
   const token = localStorage.getItem("token");
 
-//  if (!token) return;
   if (!token) {
-  console.log("No token → user not logged in");
-  return;
+    setIsAuth(false);
+    return;
   }
+
+  if (isTokenExpired(token)) {
+    console.log("Token expired → logging out");
+
+    localStorage.removeItem("token");
+    setIsAuth(false);
+    return;
+  }
+
   setIsAuth(true);
 
   const fetchDraft = async () => {
     try {
-      const res = await api.get("/api/draft"); // ✅ FIXED
+      const res = await api.get("/api/draft");
 
       if (res.data?.data) {
         setResponses(res.data.data);
-        setDraftId(res.data.id);
       }
     } catch (err) {
       console.error("Draft fetch error:", err);
@@ -378,6 +402,16 @@ return (
       >
         Save & Next
       </button>
+      <button
+       onClick={handleLogout}
+       style={{
+         position: "absolute",
+         right: "20px",
+         top: "20px"
+       }}
+     >
+       Logout
+     </button>
    </>
 )}
 
@@ -486,12 +520,22 @@ return (
     <button
 //	onClick={handleSubmit}
 	onClick={async () => {
-	    await saveDraft(); //save to db
+//	    await saveDraft(); //save to db
 	    handleSubmit();
     }}
 	    style={{ marginLeft: "10px", padding: "10px 20px", marginTop: "20px" }}>
       Save & Submit
     </button>
+    <button
+     onClick={handleLogout}
+     style={{
+       position: "absolute",
+       right: "20px",
+       top: "20px"
+     }}
+   >
+     Logout
+   </button>
   </>
 )}
     </div>

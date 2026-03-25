@@ -91,7 +91,6 @@ app.post("/api/draft", verifyToken, async (req, res) => {
  */
 
 app.post("/api/submit", verifyToken, async (req, res) => {
-//  const { user_id, data } = req.body;
   const user_id = req.user.id;
   const { data } = req.body;
 
@@ -106,10 +105,33 @@ app.post("/api/submit", verifyToken, async (req, res) => {
       [user_id, data]
     );
 
+    // 🔥 If no draft exists → insert new
+    if (result.rows.length === 0) {
+      const insert = await pool.query(
+        `INSERT INTO assessments (user_id, data, status)
+         VALUES ($1, $2, 'submitted')
+         RETURNING *`,
+        [user_id, data]
+      );
+
+      return res.json(insert.rows[0]);
+    }
+
     res.json(result.rows[0]);
+
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error submitting form");
+        // 🔥 Handle duplicate submission
+    if (err.code === "23505") {
+      return res.status(400).json({
+        message: "Form already submitted"
+      });
+    }
+
+    res.status(500).json({
+      message: "Error submitting form"
+    });
+//    res.status(500).send("Error submitting form");
   }
 });
 
