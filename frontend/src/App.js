@@ -3,63 +3,76 @@ import formData from "./form.json";
 import "./App.css";
 import axios from "axios";
 import { useEffect } from "react";
+import api from "./api";
 
 function App() {
   console.log("App Loaded ✅");
+  const [isAuth, setIsAuth] = useState(false);
   const [step, setStep] = useState(1);
   const [responses, setResponses] = useState({});
 
   const userId = "user1"; // later replace with login user
   const [draftId, setDraftId] = useState(null);
 // 🔹 Save Draft API
-  const saveDraft = async () => {
-    try {
-      await axios.post("http://localhost:5000/api/draft", {
-        user_id: userId,
-        data: responses,
-	id: draftId
-      });
 
-      alert("Draft saved to DB");
-    } catch (err) {
-      console.error(err);
-      alert("Error saving draft");
-    }
-  };
+const saveDraft = async () => {
+  try {
+    await api.post("/api/draft", {
+      data: responses
+    });
+
+    alert("Draft saved to DB");
+  } catch (err) {
+    console.error("Draft save error:", err);
+    alert("Error saving draft");
+  }
+};
 
 // 🔹 Submit API
-  const handleSubmit = async () => {
-    try {
-      await axios.post("http://localhost:5000/api/submit", {
-        user_id: userId,
-        data: responses
-      });
+const handleSubmit = async () => {
+  try {
+    await api.post("/api/submit", {
+      data: responses
+    });
 
-      alert("Form submitted successfully");
+    alert("Form submitted successfully");
+  } catch (err) {
+    console.error("Submit error:", err);
+    alert("Error submitting form");
+  }
+};
+
+useEffect(() => {
+  const token = localStorage.getItem("token");
+
+  // 🔹 If no token → stop here
+  if (!token) return;
+
+  setIsAuth(true);
+
+  const fetchDraft = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:5000/api/draft",   // ✅ no userId
+        {
+          headers: {
+            Authorization: token   // ✅ VERY IMPORTANT
+          }
+        }
+      );
+
+      if (res.data?.data) {
+        setResponses(res.data.data);
+        setDraftId(res.data.id);
+      }
+
     } catch (err) {
-      console.error(err);
-      alert("Error submitting form");
+      console.error("Draft fetch error:", err);
     }
   };
 
-  useEffect(() => {
-    const fetchDraft = async () => {
-      try {
-        const res = await axios.get(
-          `http://localhost:5000/api/draft/${userId}`
-        );
-
-        if (res.data?.data) {
-          setResponses(res.data.data);
-	  setDraftId(res.data.id); // store id
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    fetchDraft();
-  }, []);
+  fetchDraft();
+}, []);
 
   const handleChange = (key, value) => {
     const updated = { ...responses, [key]: value };
