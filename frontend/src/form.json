@@ -1,0 +1,110 @@
+{
+  "section1": [
+    {
+      "type": "row",
+      "fields": [
+        { "label": "Name of staff", "type": "text" },
+        { "label": "Designation", "type": "text" }
+      ]
+    },
+    {
+      "type": "row",
+      "fields": [
+        { "label": "Name of Unit", "type": "text" }
+      ]
+    },
+    {
+      "type": "row",
+      "fields": [
+        { "label": "Assessment period From", "type": "date" },
+        { "label": "Assessment period To", "type": "date" }
+      ]
+    },
+
+    {
+      "type": "sectionTitle",
+      "label": "SECTION 1: ASSESSMENT BY THE APPRAISEE AND APPRAISER"
+    },
+    {
+      "type": "info",
+      "label": "To be completed with mutual discussion by the Appraisee and Appraiser. Use additional sheets if required."
+    },
+
+    {
+      "question": "A. Did you handle any responsibilities discussed during the last appraisal and mention your contribution in 2025.",
+      "type": "textarea",
+      "subQuestions": ["1.", "2.", "3."]
+    },
+    {
+      "question": "B. Did you handle any responsibilities beyond your job description (multitasking) during the year?",
+      "type": "textarea"
+    },
+    {
+      "question": "C. Describe any factors which constrained your performance during the year.",
+      "type": "textarea"
+    },
+    {
+      "question": "D. Mention your key responsibilities for 2026 along with indicators:",
+      "type": "textarea",
+      "subQuestions": ["1.", "2.", "3."]
+    },
+    {
+      "question": "E. List out the trainings and workshops attended during the year",
+      "type": "textarea"
+    },
+    {
+      "question": "F. List out the new training needs which are budgeted in 2026:",
+      "type": "textarea"
+    },
+    {
+      "question": "G. Can the staff be given additional responsibilities? If yes, please describe the nature of responsibilities.",
+      "type": "textarea"
+    },
+
+    {
+      "type": "row",
+      "fields": [
+        {
+          "label": "H. Whether the Appraisee has been/ being investigated under Safeguarding and/or Child Protection Policy norms during the year",
+          "type": "radio",
+          "options": ["Yes", "No"]
+        }
+      ]
+    },
+
+    {
+      "type": "row",
+      "fields": [
+        {
+          "label": "I. Kindly attach your Job Description for 2026 duly signed by both Appraisee and Appraiser",
+          "type": "radio",
+          "options": ["Mandatory"]
+        }
+      ]
+    },
+
+    {
+      "type": "row",
+      "fields": [
+        {
+          "label": "J. Recommended for Promotion / Confirmation / Extension of contract (if applicable)?",
+          "type": "radio",
+          "options": ["Yes", "No"]
+        }
+      ]
+    },
+
+    {
+      "question": "Appraiser's Comments",
+      "type": "textarea"
+    },
+
+    {
+      "type": "row",
+      "fields": [
+        { "label": "Signature of Appraiser (with date)", "type": "text" },
+        { "label": "Signature of Appraisee (with date)", "type": "text" }
+      ]
+    }
+  ]
+}
