@@ -40,17 +40,22 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+//Read token
 const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization;
+  const authHeader = req.headers.authorization;
 
-  if (!token) return res.status(403).send("No token");
+  if (!authHeader) {
+    return res.status(403).send("No token");
+  }
+
+  const token = authHeader.split(" ")[1]; // ✅ FIX
 
   try {
     const decoded = jwt.verify(token, SECRET);
     req.user = decoded;
     next();
   } catch (err) {
-    res.status(401).send("Invalid token");
+    return res.status(401).send("Invalid token");
   }
 };
 
@@ -59,7 +64,6 @@ const verifyToken = (req, res, next) => {
  */
 
 app.post("/api/draft", verifyToken, async (req, res) => {
-//  const { user_id, data } = req.body;
   const user_id = req.user.id;
   const { data } = req.body;
 
@@ -85,23 +89,6 @@ app.post("/api/draft", verifyToken, async (req, res) => {
 /**
  * FINAL SUBMIT
  */
-//app.post("/api/submit", async (req, res) => {
-//  const { user_id, data } = req.body;
-
-//  try {
-//    const result = await pool.query(
-//      `INSERT INTO assessments (user_id, data, status)
-//       VALUES ($1, $2, 'submitted')
-//       RETURNING *`,
-//      [user_id, data]
- //   );
-//
-  //  res.json(result.rows[0]);
- // } catch (err) {
-  //  console.error(err);
-  //  res.status(500).send("Error submitting form");
- // }
-//});
 
 app.post("/api/submit", verifyToken, async (req, res) => {
 //  const { user_id, data } = req.body;

@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import formData from "./form.json";
 import "./App.css";
-import axios from "axios";
 import { useEffect } from "react";
 import api from "./api";
+import Login from "./Login";
 
 function App() {
   console.log("App Loaded ✅");
@@ -45,27 +45,21 @@ const handleSubmit = async () => {
 useEffect(() => {
   const token = localStorage.getItem("token");
 
-  // 🔹 If no token → stop here
-  if (!token) return;
-
+//  if (!token) return;
+  if (!token) {
+  console.log("No token → user not logged in");
+  return;
+  }
   setIsAuth(true);
 
   const fetchDraft = async () => {
     try {
-      const res = await axios.get(
-        "http://localhost:5000/api/draft",   // ✅ no userId
-        {
-          headers: {
-            Authorization: token   // ✅ VERY IMPORTANT
-          }
-        }
-      );
+      const res = await api.get("/api/draft"); // ✅ FIXED
 
       if (res.data?.data) {
         setResponses(res.data.data);
         setDraftId(res.data.id);
       }
-
     } catch (err) {
       console.error("Draft fetch error:", err);
     }
@@ -73,6 +67,10 @@ useEffect(() => {
 
   fetchDraft();
 }, []);
+
+if (!isAuth) {
+  return <Login setAuth={setIsAuth} />;
+}
 
   const handleChange = (key, value) => {
     const updated = { ...responses, [key]: value };
