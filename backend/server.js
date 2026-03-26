@@ -89,6 +89,20 @@ app.post("/api/draft", verifyToken, async (req, res) => {
   const { data } = req.body;
 
   try {
+    // 🔥 Check if already submitted
+    const submittedCheck = await pool.query(
+      `SELECT * FROM assessments 
+       WHERE user_id = $1 AND status = 'submitted'`,
+      [user_id]
+    );
+
+    if (submittedCheck.rows.length > 0) {
+      return res.status(400).json({
+        message: "Form already submitted. Draft not allowed."
+      });
+    }
+
+    // ✅ Normal UPSERT for draft
     const result = await pool.query(
       `INSERT INTO assessments (user_id, data, status)
        VALUES ($1, $2, 'draft')
@@ -101,6 +115,7 @@ app.post("/api/draft", verifyToken, async (req, res) => {
     );
 
     res.json(result.rows[0]);
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Error saving draft");

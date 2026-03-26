@@ -43,10 +43,15 @@ function App() {
         data: responses
       });
 
-      alert("Draft saved to DB");
+      alert("Draft saved");
     } catch (err) {
-      console.error("Draft save error:", err);
-      alert("Error saving draft");
+      console.error(err);
+      if (err.response?.data?.message === "Form already submitted. Draft not allowed.") {
+        alert("⚠️ Form already submitted. You cannot save draft.");
+        setIsSubmitted(true); // 🔥 lock UI
+      } else {
+        alert("Error saving draft");
+      }
     }
   };
 
