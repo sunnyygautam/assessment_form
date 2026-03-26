@@ -11,6 +11,26 @@ const bcrypt = require("bcrypt");
 
 const SECRET = "mysecretkey"; // move to env later
 
+app.get("/api/assessments", verifyToken, async (req, res) => {
+  try {
+    // 🔒 Only appraiser/admin allowed
+    if (req.user.role !== "appraiser") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const result = await pool.query(
+      `SELECT id, user_id, status, data, created_at
+       FROM assessments
+       ORDER BY created_at DESC`
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching assessments");
+  }
+});
+
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
 

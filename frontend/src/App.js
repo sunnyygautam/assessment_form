@@ -4,6 +4,7 @@ import "./App.css";
 import { useEffect } from "react";
 import api from "./api";
 import Login from "./Login";
+import AdminDashboard from "./AdminDashboard";
 
 function App() {
   console.log("App Loaded ✅");
@@ -12,10 +13,10 @@ function App() {
   const [responses, setResponses] = useState({});
 
   const [isSubmitted, setIsSubmitted] = useState(false);
+  
   const role = localStorage.getItem("role");
   const isReadOnly = isSubmitted && role !== "appraiser";
-
-  const userId = "user1"; // later replace with login user
+  
   const [draftId, setDraftId] = useState(null);
 
   const isTokenExpired = (token) => {
@@ -35,50 +36,50 @@ function App() {
 
     window.location.reload(); // optional but clean reset
   };
-// 🔹 Save Draft API
-const saveDraft = async () => {
-  try {
-    await api.post("/api/draft", {
-      data: responses
-    });
+  // 🔹 Save Draft API
+  const saveDraft = async () => {
+    try {
+      await api.post("/api/draft", {
+        data: responses
+      });
 
-    alert("Draft saved to DB");
-  } catch (err) {
-    console.error("Draft save error:", err);
-    alert("Error saving draft");
-  }
-};
+      alert("Draft saved to DB");
+    } catch (err) {
+      console.error("Draft save error:", err);
+      alert("Error saving draft");
+    }
+  };
 
-// 🔹 Submit API
-const handleSubmit = async () => {
-  try {
-    await api.post("/api/submit", {
-      data: responses
-    });
+  // 🔹 Submit API
+  const handleSubmit = async () => {
+    try {
+      await api.post("/api/submit", {
+        data: responses
+      });
 
-    alert("Form submitted successfully");
-    setIsSubmitted(true);
-  } catch (err) {
-    console.error("Submit error:", err);
-    alert("Error submitting form");
-  }
-};
+      alert("Form submitted successfully");
+      setIsSubmitted(true);
+    } catch (err) {
+      console.error("Submit error:", err);
+      alert("Error submitting form");
+    }
+  };
 
-useEffect(() => {
-  const token = localStorage.getItem("token");
+  useEffect(() => {
+    const token = localStorage.getItem("token");
 
-  if (!token) {
-    setIsAuth(false);
-    return;
-  }
+    if (!token) {
+      setIsAuth(false);
+      return;
+    }
 
-  if (isTokenExpired(token)) {
-    console.log("Token expired → logging out");
+    if (isTokenExpired(token)) {
+      console.log("Token expired → logging out");
 
-    localStorage.removeItem("token");
-    setIsAuth(false);
-    return;
-  }
+      localStorage.removeItem("token");
+      setIsAuth(false);
+      return;
+    }
 
   setIsAuth(true);
 
@@ -88,7 +89,7 @@ useEffect(() => {
 
       if (res.data?.data) {
         setResponses(res.data.data);
-	setDraftId(res.data.id);
+        setDraftId(res.data.id);
       }
       // 🔥 Check if submitted
       if (res.data?.status === "submitted") {
@@ -100,127 +101,128 @@ useEffect(() => {
   };
 
   fetchDraft();
-}, []);
+  }, []);
 
-if (!isAuth) {
-  return <Login setAuth={setIsAuth} />;
-}
+  if (!isAuth) {
+    return <Login setAuth={setIsAuth} />;
+  }
+
+  if (role === "appraiser") {
+    return <AdminDashboard onLogout={handleLogout} />;
+  }
 
   const handleChange = (key, value) => {
     const updated = { ...responses, [key]: value };
-//    setResponses({ ...responses, [key]: value });
     setResponses(updated);
-    //autosave
-//    localStorage.setItem("draft", JSON.stringify(updated));
   };
 
   if (!formData || !formData.section1) {
     return <h2>Loading form...</h2>;
   }
 
-const calculateScore = () => {
-  let total = 0;
+  const calculateScore = () => {
+    let total = 0;
 
-  section2Data.forEach((_, i) => {
-    const val = responses[`appraiser-${i}`];
-    if (val) total += Number(val);
-  });
+    section2Data.forEach((_, i) => {
+      const val = responses[`appraiser-${i}`];
+      if (val) total += Number(val);
+    });
 
-  return total;
-};
+    return total;
+  };
 
-const section2Data = [
-  {
-    title: "JOB KNOWLEDGE (Technical/Subject knowledge of the job)",
-    items: [
-      { label: "Excellent", desc: "Excellent knowledge as related to the present job, is trying to improve self and mentor others", score: 4 },
-      { label: "Good", desc: "Reliable knowledge as related to the present job", score: 3 },
-      { label: "Average", desc: "Satisfactory knowledge as related to the present job", score: 2 },
-      { label: "Poor", desc: "Poor knowledge as related to the present job", score: 1 }
-    ]
-  },
-  {
-    title: "INITIATIVE (Takes actions that are self driven)",
-    items: [
-      { label: "Excellent", desc: "Takes initiative even when the probability of completing the task is low", score: 4 },
-      { label: "Good", desc: "Takes initiative only when the probability of completing the task is high", score: 3 },
-      { label: "Average", desc: "Performs the tasks assigned without taking much initiative", score: 2 },
-      { label: "Poor", desc: "Does not take any initiative, needs superior's instruction in every task", score: 1 }
-    ]
-  },
-  {
-    title: "QUALITY OF WORK (Accuracy and completeness of the job performed)",
-    items: [
-      { label: "Excellent", desc: "Seldom makes mistakes; excellent quality of work and multitasking", score: 4 },
-      { label: "Good", desc: "Careful worker; good quality of work and occasionally multitasking", score: 3 },
-      { label: "Average", desc: "Careless at times; makes occasional mistakes in work", score: 2 },
-      { label: "Poor", desc: "Generally careless; makes excessive mistakes in work", score: 1 }
-    ]
-  },
-  {
-    title: "QUANTITY OF WORK (Volume of output)",
-    items: [
-      { label: "Excellent", desc: "Always eager & willing to take extra work load including multiskilling", score: 4 },
-      { label: "Good", desc: "Good volume of work output and occasional multitasking", score: 3 },
-      { label: "Average", desc: "Acceptable output on regular workload only", score: 2 },
-      { label: "Poor", desc: "Poor output. Refuses extra workload", score: 1 }
-    ]
-  },
-  {
-    title: "COMMUNICATION SKILLS (Communicates ideas and thoughts clearly)",
-    items: [
-      { label: "Excellent", desc: "Capably articulates ideas and thoughts and makes an impact", score: 4 },
-      { label: "Good", desc: "Communicates ideas and thoughts very clearly", score: 3 },
-      { label: "Average", desc: "Average communicator; can express ideas and thoughts reasonably well", score: 2 },
-      { label: "Poor", desc: "Very poor communicator, cannot convey ideas and thoughts well", score: 1 }
-    ]
-  },
-  {
-    title: "RELATIONSHIPS & COOPERATION ATTITUDE WITH COLLEAGUES (Positive Relationships)",
-    items: [
-      { label: "Excellent", desc: "Excellent relationship with colleagues", score: 4 },
-      { label: "Good", desc: "Good relationship with colleagues", score: 3 },
-      { label: "Average", desc: "Average relationship with colleagues", score: 2 },
-      { label: "Poor", desc: "Poor relationship with colleagues", score: 1 }
-    ]
-  },
-  {
-    title: "ATTITUDE WITH PATIENTS / STUDENTS / STAKEHOLDERS",
-    items: [
-      { label: "Excellent", desc: "Excellent relationship with patients/students/stakeholders", score: 4 },
-      { label: "Good", desc: "Good relationship with patients/students/stakeholders", score: 3 },
-      { label: "Average", desc: "Average relationship with patients/students/stakeholders", score: 2 },
-      { label: "Poor", desc: "Poor relationship with patients/students/stakeholders", score: 1 }
-    ]
-  },
-  {
-    title: "ADHERING TO POLICIES, PROTOCOLS, STANDARDS AND ABIDING WITH PREVAILING LAWS",
-    items: [
-      { label: "Excellent", desc: "Relied upon to adhere to existing systems, taking a lead in enhancing its effectiveness through innovation", score: 4 },
-      { label: "Good", desc: "Will adhere to systems and processes for organisational effectiveness", score: 3 },
-      { label: "Average", desc: "Has to be repeatedly told to follow the systems and processes laid out by the organization", score: 2 },
-      { label: "Poor", desc: "Does not adhere to systems and process laid down by the organisation", score: 1 }
-    ]
-  },
-  {
-    title: "PUNCTUALITY (Work timings and output)",
-    items: [
-      { label: "Excellent", desc: "Is consistently punctual in arriving at work and timely completion of work and assignments", score: 4 },
-      { label: "Good", desc: "Most of the time is punctual in arriving at work and usually completes work and assignments in time", score: 3 },
-      { label: "Average", desc: "Is often late in arriving at work and delays in accomplishing work and assignments", score: 2 },
-      { label: "Poor", desc: "Is very irregular in maintaining punctuality of attendance or accomplishing tasks", score: 1 }
-    ]
-  },
-  {
-    title: "INTEGRITY (Honesty, Ethical & Moral Standards)",
-    items: [
-      { label: "Excellent", desc: "Implicitly trust / above board in work; also will never take advantage of position for personal gain.", score: 4 },
-      { label: "Good", desc: "Can be relied on for most work. Do not have to cross check or verify each activity.", score: 3 },
-      { label: "Average", desc: "Has to be monitored regularly and often accompanied by another staff for assignments/ work.", score: 2 },
-      { label: "Poor", desc: "Cannot be trusted to carry out assignments or deal with others in an honest way.", score: 1 }
-    ]
-  }
-];
+  const section2Data = [
+    {
+      title: "JOB KNOWLEDGE (Technical/Subject knowledge of the job)",
+      items: [
+        { label: "Excellent", desc: "Excellent knowledge as related to the present job, is trying to improve self and mentor others", score: 4 },
+        { label: "Good", desc: "Reliable knowledge as related to the present job", score: 3 },
+        { label: "Average", desc: "Satisfactory knowledge as related to the present job", score: 2 },
+        { label: "Poor", desc: "Poor knowledge as related to the present job", score: 1 }
+      ]
+    },
+    {
+      title: "INITIATIVE (Takes actions that are self driven)",
+      items: [
+        { label: "Excellent", desc: "Takes initiative even when the probability of completing the task is low", score: 4 },
+        { label: "Good", desc: "Takes initiative only when the probability of completing the task is high", score: 3 },
+        { label: "Average", desc: "Performs the tasks assigned without taking much initiative", score: 2 },
+        { label: "Poor", desc: "Does not take any initiative, needs superior's instruction in every task", score: 1 }
+      ]
+    },
+    {
+      title: "QUALITY OF WORK (Accuracy and completeness of the job performed)",
+      items: [
+        { label: "Excellent", desc: "Seldom makes mistakes; excellent quality of work and multitasking", score: 4 },
+        { label: "Good", desc: "Careful worker; good quality of work and occasionally multitasking", score: 3 },
+        { label: "Average", desc: "Careless at times; makes occasional mistakes in work", score: 2 },
+        { label: "Poor", desc: "Generally careless; makes excessive mistakes in work", score: 1 }
+      ]
+    },
+    {
+      title: "QUANTITY OF WORK (Volume of output)",
+      items: [
+        { label: "Excellent", desc: "Always eager & willing to take extra work load including multiskilling", score: 4 },
+        { label: "Good", desc: "Good volume of work output and occasional multitasking", score: 3 },
+        { label: "Average", desc: "Acceptable output on regular workload only", score: 2 },
+        { label: "Poor", desc: "Poor output. Refuses extra workload", score: 1 }
+      ]
+    },
+    {
+      title: "COMMUNICATION SKILLS (Communicates ideas and thoughts clearly)",
+      items: [
+        { label: "Excellent", desc: "Capably articulates ideas and thoughts and makes an impact", score: 4 },
+        { label: "Good", desc: "Communicates ideas and thoughts very clearly", score: 3 },
+        { label: "Average", desc: "Average communicator; can express ideas and thoughts reasonably well", score: 2 },
+        { label: "Poor", desc: "Very poor communicator, cannot convey ideas and thoughts well", score: 1 }
+      ]
+    },
+    {
+      title: "RELATIONSHIPS & COOPERATION ATTITUDE WITH COLLEAGUES (Positive Relationships)",
+      items: [
+        { label: "Excellent", desc: "Excellent relationship with colleagues", score: 4 },
+        { label: "Good", desc: "Good relationship with colleagues", score: 3 },
+        { label: "Average", desc: "Average relationship with colleagues", score: 2 },
+        { label: "Poor", desc: "Poor relationship with colleagues", score: 1 }
+      ]
+    },
+    {
+      title: "ATTITUDE WITH PATIENTS / STUDENTS / STAKEHOLDERS",
+      items: [
+        { label: "Excellent", desc: "Excellent relationship with patients/students/stakeholders", score: 4 },
+        { label: "Good", desc: "Good relationship with patients/students/stakeholders", score: 3 },
+        { label: "Average", desc: "Average relationship with patients/students/stakeholders", score: 2 },
+        { label: "Poor", desc: "Poor relationship with patients/students/stakeholders", score: 1 }
+      ]
+    },
+    {
+      title: "ADHERING TO POLICIES, PROTOCOLS, STANDARDS AND ABIDING WITH PREVAILING LAWS",
+      items: [
+        { label: "Excellent", desc: "Relied upon to adhere to existing systems, taking a lead in enhancing its effectiveness through innovation", score: 4 },
+        { label: "Good", desc: "Will adhere to systems and processes for organisational effectiveness", score: 3 },
+        { label: "Average", desc: "Has to be repeatedly told to follow the systems and processes laid out by the organization", score: 2 },
+        { label: "Poor", desc: "Does not adhere to systems and process laid down by the organisation", score: 1 }
+      ]
+    },
+    {
+      title: "PUNCTUALITY (Work timings and output)",
+      items: [
+        { label: "Excellent", desc: "Is consistently punctual in arriving at work and timely completion of work and assignments", score: 4 },
+        { label: "Good", desc: "Most of the time is punctual in arriving at work and usually completes work and assignments in time", score: 3 },
+        { label: "Average", desc: "Is often late in arriving at work and delays in accomplishing work and assignments", score: 2 },
+        { label: "Poor", desc: "Is very irregular in maintaining punctuality of attendance or accomplishing tasks", score: 1 }
+      ]
+    },
+    {
+      title: "INTEGRITY (Honesty, Ethical & Moral Standards)",
+      items: [
+        { label: "Excellent", desc: "Implicitly trust / above board in work; also will never take advantage of position for personal gain.", score: 4 },
+        { label: "Good", desc: "Can be relied on for most work. Do not have to cross check or verify each activity.", score: 3 },
+        { label: "Average", desc: "Has to be monitored regularly and often accompanied by another staff for assignments/ work.", score: 2 },
+        { label: "Poor", desc: "Cannot be trusted to carry out assignments or deal with others in an honest way.", score: 1 }
+      ]
+    }
+  ];
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
