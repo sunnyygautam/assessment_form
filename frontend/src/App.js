@@ -11,6 +11,10 @@ function App() {
   const [step, setStep] = useState(1);
   const [responses, setResponses] = useState({});
 
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const role = localStorage.getItem("role");
+  const isReadOnly = isSubmitted && role !== "appraiser";
+
   const userId = "user1"; // later replace with login user
   const [draftId, setDraftId] = useState(null);
 
@@ -53,6 +57,7 @@ const handleSubmit = async () => {
     });
 
     alert("Form submitted successfully");
+    setIsSubmitted(true);
   } catch (err) {
     console.error("Submit error:", err);
     alert("Error submitting form");
@@ -83,6 +88,11 @@ useEffect(() => {
 
       if (res.data?.data) {
         setResponses(res.data.data);
+	setDraftId(res.data.id);
+      }
+      // 🔥 Check if submitted
+      if (res.data?.status === "submitted") {
+        setIsSubmitted(true);
       }
     } catch (err) {
       console.error("Draft fetch error:", err);
@@ -214,6 +224,9 @@ const section2Data = [
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
+    <div style={{ position: "absolute", right: "20px", top: "20px" }}>
+     <button onClick={handleLogout}>Logout</button>
+    </div>
       <h2 style={{ textAlign: "center" }}>
         TLMTI STAFF PERFORMANCE ASSESSMENT 2025
       </h2>
@@ -223,6 +236,11 @@ const section2Data = [
       <h4 style={{ textAlign: "center" }}>
         (Other than Domain Heads & Unit Heads)
       </h4>
+      {isSubmitted && (
+      <h5 style={{ color: "red", textAlign: "center" }}>
+          🔒 Form already submitted (Read-only mode)
+      </h5>
+      )}
 {step === 1 && (
   <>
 	{formData.section1.map((item, index) => {
@@ -267,6 +285,7 @@ const section2Data = [
                   {/* TEXT */}
                   {field.type === "text" && (
                     <input
+			  disabled={isReadOnly}
                       type="text"
 		      value={responses[field.label] || ""}
                       style={{ width: "100%" }}
@@ -279,6 +298,7 @@ const section2Data = [
                   {/* DATE */}
                   {field.type === "date" && (
                     <input
+			  disabled={isReadOnly}
                       type="date"
 		      value={responses[field.label] || ""}
                       style={{ width: "100%" }}
@@ -293,6 +313,7 @@ const section2Data = [
                     field.options.map((opt, idx) => (
                       <label key={idx} style={{ marginRight: "10px" }}>
                         <input
+			    disabled={isReadOnly}
                           type="radio"
                           name={field.label}
                           value={opt}
@@ -340,6 +361,7 @@ return (
         >
           <span>{sub}</span>
           <input
+	      disabled={isReadOnly}
             style={{
               width: "100%",
               border: "none",
@@ -359,6 +381,7 @@ return (
     ) : (
       // 🔹 Normal textarea for other sections
       <textarea
+	    disabled={isReadOnly}
         style={{
           width: "100%",
           minHeight: "80px",
@@ -373,11 +396,10 @@ return (
   </div>
 );
       })}
+  {!isSubmitted && (
+    <>
       <button
 	onClick={saveDraft}
-//        onClick={() => {
-//                localStorage.setItem("draft", JSON.stringify(responses))
-//        }}
         style={{
           padding: "10px 20px",
           fontSize: "14px",
@@ -402,17 +424,9 @@ return (
       >
         Save & Next
       </button>
-      <button
-       onClick={handleLogout}
-       style={{
-         position: "absolute",
-         right: "20px",
-         top: "20px"
-       }}
-     >
-       Logout
-     </button>
-   </>
+    </>
+    )}
+</>
 )}
 
 {step === 2 && (
@@ -453,6 +467,7 @@ return (
                 {/* Appraisee */}
                 <td style={{ textAlign: "center" }}>
                   <input
+		    disabled={isReadOnly}
                     type="radio"
                     name={`appraisee-${i}`}
                     value={item.score}
@@ -466,6 +481,7 @@ return (
                 {/* Appraiser */}
                 <td style={{ textAlign: "center" }}>
                   <input
+		    disabled={isReadOnly}
                     type="radio"
                     name={`appraiser-${i}`}
                     value={item.score}
@@ -503,12 +519,13 @@ return (
     </h4>
 
     {/* 🔹 Navigation */}
-    <button onClick={() => setStep(1)} style={{ marginLeft: "10px", padding: "10px 20px", marginTop: "20px" }}>Back</button>
+    {!isSubmitted && (
+      <button onClick={() => setStep(1)} style={{ marginLeft: "10px", padding: "10px 20px", marginTop: "20px" }}>Back</button>
+    )}
+  {!isSubmitted && (
+   <>
     <button
 	onClick={saveDraft}
-//        onClick={() => {
-//                localStorage.setItem("draft", JSON.stringify(responses))
-//        }}
         style={{
           padding: "10px 20px",
           marginTop: "20px",
@@ -518,15 +535,17 @@ return (
         Save Draft
     </button>
     <button
-//	onClick={handleSubmit}
+	// onClick={handleSubmit}
 	onClick={async () => {
-//	    await saveDraft(); //save to db
+	    // await saveDraft(); //save to db
 	    handleSubmit();
     }}
 	    style={{ marginLeft: "10px", padding: "10px 20px", marginTop: "20px" }}>
       Save & Submit
     </button>
-    <button
+  </>
+  )}
+{/*     <button
      onClick={handleLogout}
      style={{
        position: "absolute",
@@ -535,7 +554,7 @@ return (
      }}
    >
      Logout
-   </button>
+   </button> */}
   </>
 )}
     </div>
