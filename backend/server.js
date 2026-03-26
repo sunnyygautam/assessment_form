@@ -175,23 +175,55 @@ app.post("/api/submit", verifyToken, async (req, res) => {
  * GET DRAFT
  */
 app.get("/api/draft", verifyToken, async (req, res) => {
-//  const { user_id } = req.params;
   const user_id = req.user.id;
-  const { data } = req.body;
 
   try {
-    const result = await pool.query(
-      `SELECT * FROM assessments
-       WHERE user_id = $1 AND status = 'draft'
-       ORDER BY created_at DESC LIMIT 1`,
+    // 🔥 FIRST check submitted
+    const submitted = await pool.query(
+      `SELECT * FROM assessments 
+       WHERE user_id = $1 AND status = 'submitted'
+       LIMIT 1`,
       [user_id]
     );
 
-    res.json(result.rows[0] || {});
+    if (submitted.rows.length > 0) {
+      return res.json(submitted.rows[0]); // ✅ return submitted
+    }
+
+    // 🔹 else return draft
+    const draft = await pool.query(
+      `SELECT * FROM assessments 
+       WHERE user_id = $1 AND status = 'draft'
+       LIMIT 1`,
+      [user_id]
+    );
+
+    res.json(draft.rows[0] || {});
+
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error fetching draft");
+    res.status(500).send("Error fetching data");
   }
 });
+
+// app.get("/api/draft", verifyToken, async (req, res) => {
+// //  const { user_id } = req.params;
+//   const user_id = req.user.id;
+//   const { data } = req.body;
+
+//   try {
+//     const result = await pool.query(
+//       `SELECT * FROM assessments
+//        WHERE user_id = $1 AND status = 'draft'
+//        ORDER BY created_at DESC LIMIT 1`,
+//       [user_id]
+//     );
+
+//     res.json(result.rows[0] || {});
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).send("Error fetching draft");
+//   }
+// });
 
 app.listen(5000, () => console.log("Server running on port 5000"));

@@ -11,7 +11,7 @@ function App() {
   const [isAuth, setIsAuth] = useState(false);
   const [step, setStep] = useState(1);
   const [responses, setResponses] = useState({});
-
+  const [loading, setLoading] = useState(true);
   const [isSubmitted, setIsSubmitted] = useState(false);
   
   const role = localStorage.getItem("role");
@@ -75,38 +75,47 @@ function App() {
 
     if (!token) {
       setIsAuth(false);
+      setLoading(false);
       return;
     }
 
     if (isTokenExpired(token)) {
-      console.log("Token expired → logging out");
-
       localStorage.removeItem("token");
       setIsAuth(false);
+      setLoading(false);
       return;
     }
 
-  setIsAuth(true);
+    setIsAuth(true);
 
-  const fetchDraft = async () => {
-    try {
-      const res = await api.get("/api/draft");
+    const fetchDraft = async () => {
+      try {
+        const res = await api.get("/api/draft");
 
-      if (res.data?.data) {
-        setResponses(res.data.data);
-        setDraftId(res.data.id);
+        console.log("Draft API:", res.data);
+
+        if (res.data?.data) {
+          setResponses(res.data.data);
+          setDraftId(res.data.id);
+        }
+
+        if (res.data?.status === "submitted") {
+          setIsSubmitted(true);
+          setStep(2);
+        } else {
+          setStep(1);
+        }
+
+      } catch (err) {
+        console.error("Draft fetch error:", err);
+      } finally {
+        setLoading(false);
       }
-      // 🔥 Check if submitted
-      if (res.data?.status === "submitted") {
-        setIsSubmitted(true);
-      }
-    } catch (err) {
-      console.error("Draft fetch error:", err);
-    }
-  };
+    };
 
-  fetchDraft();
-  }, []);
+    fetchDraft();
+
+  }, [isAuth]);   // 🔥 THIS IS THE FIX
 
   if (!isAuth) {
     return <Login setAuth={setIsAuth} />;
@@ -116,6 +125,10 @@ function App() {
     return <AdminDashboard onLogout={handleLogout} />;
   }
 
+  if (loading) {
+    return <h2>Loading data...</h2>;
+  }
+  
   const handleChange = (key, value) => {
     const updated = { ...responses, [key]: value };
     setResponses(updated);
@@ -248,7 +261,7 @@ function App() {
           🔒 Form already submitted (Read-only mode)
       </h5>
       )}
-{step === 1 && (
+{(step === 1 || isSubmitted) && (
   <>
 	{formData.section1.map((item, index) => {
 
@@ -436,7 +449,7 @@ return (
 </>
 )}
 
-{step === 2 && (
+{(step === 2 || isSubmitted) && (
   <>
     <h3 style={{ textAlign: "center", marginTop: "20px" }}>
       SECTION 2: APPRAISEE & APPRAISER'S ASSESSMENT ON PERFORMANCE
