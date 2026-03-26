@@ -31,6 +31,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    localStorage.removeItem("step");   // ✅ reset flow
 
     setIsAuth(false);
 
@@ -63,6 +64,7 @@ function App() {
       });
 
       alert("Form submitted successfully");
+      localStorage.removeItem("step");   // ✅ reset flow
       setIsSubmitted(true);
     } catch (err) {
       console.error("Submit error:", err);
@@ -91,7 +93,7 @@ function App() {
     const fetchDraft = async () => {
       try {
         const res = await api.get("/api/draft");
-
+        const savedStep = localStorage.getItem("step");
         console.log("Draft API:", res.data);
 
         if (res.data?.data) {
@@ -102,6 +104,8 @@ function App() {
         if (res.data?.status === "submitted") {
           setIsSubmitted(true);
           setStep(2);
+        } else if (savedStep) {
+          setStep(Number(savedStep));   // ✅ restore step
         } else {
           setStep(1);
         }
@@ -432,14 +436,15 @@ return (
 
       <button
         onClick={async () => {
-		await saveDraft(); //save to db
-		setStep(2);
-	}}
+          await saveDraft(); //save to db
+          setStep(2);
+          localStorage.setItem("step", "2");
+        }}
         style={{
           padding: "10px 20px",
           fontSize: "14px",
           marginTop: "20px",
-	  marginRight: "10px"
+          marginRight: "10px"
         }}
       >
         Save & Next
@@ -540,16 +545,28 @@ return (
 
     {/* 🔹 Navigation */}
     {!isSubmitted && (
-      <button onClick={() => setStep(1)} style={{ marginLeft: "10px", padding: "10px 20px", marginTop: "20px" }}>Back</button>
+      <button
+        onClick={() => {
+          setStep(1);
+          localStorage.setItem("step", "2");
+        }} 
+        style={{ 
+          marginLeft: "10px", 
+          padding: "10px 20px", 
+          marginTop: "20px" 
+        }}
+        >
+          Back
+      </button>
     )}
   {!isSubmitted && (
    <>
     <button
-	onClick={saveDraft}
+        onClick={saveDraft}
         style={{
           padding: "10px 20px",
           marginTop: "20px",
-	  marginLeft: "10px"
+          marginLeft: "10px"
         }}
       >
         Save Draft
@@ -557,7 +574,6 @@ return (
     <button
 	// onClick={handleSubmit}
 	onClick={async () => {
-	    // await saveDraft(); //save to db
 	    handleSubmit();
     }}
 	    style={{ marginLeft: "10px", padding: "10px 20px", marginTop: "20px" }}>
@@ -565,16 +581,7 @@ return (
     </button>
   </>
   )}
-{/*     <button
-     onClick={handleLogout}
-     style={{
-       position: "absolute",
-       right: "20px",
-       top: "20px"
-     }}
-   >
-     Logout
-   </button> */}
+
   </>
 )}
     </div>
