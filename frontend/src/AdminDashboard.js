@@ -4,6 +4,8 @@ import api from "./api";
 function AdminDashboard({ onLogout }) {
   const [data, setData] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -12,6 +14,7 @@ function AdminDashboard({ onLogout }) {
   const fetchData = async () => {
     try {
       const res = await api.get("/api/assessments");
+      console.log("API DATA:", res.data);
       setData(res.data);
     } catch (err) {
       console.error(err);
@@ -25,18 +28,49 @@ function AdminDashboard({ onLogout }) {
       const val = responses[`appraiser-${i}`];
       if (val) total += Number(val);
     }
-
     return total;
   };
+
+  const filteredData = data.filter((item) => {
+    const name = (item.username || "").toLowerCase();
+
+    const matchesName =
+      name.includes(search.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "" || item.status === statusFilter;
+
+    return matchesName && matchesStatus;
+  });
 
   return (
     <div style={{ padding: "20px" }}>
       <h2>📊 Admin Dashboard</h2>
 
+    <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+    <input
+        type="text"
+        placeholder="Search by username..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{ padding: "8px", width: "200px" }}
+    />
+
+    <select
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+        style={{ padding: "8px" }}
+    >
+        <option value="">All Status</option>
+        <option value="draft">Draft</option>
+        <option value="submitted">Submitted</option>
+    </select>
+    </div>
+
       <table border="1" width="100%" cellPadding="8">
         <thead>
           <tr>
-            <th>User ID</th>
+            <th>Username</th>
             <th>Status</th>
             <th>Score</th>
             <th>Action</th>
@@ -44,18 +78,26 @@ function AdminDashboard({ onLogout }) {
         </thead>
 
         <tbody>
-          {data.map((item) => (
-            <tr key={item.id}>
-              <td>{item.user_id}</td>
-              <td>{item.status}</td>
-              <td>{calculateScore(item.data)}</td>
-              <td>
-                <button onClick={() => setSelected(item)}>
-                  View
-                </button>
-              </td>
+        {filteredData.length === 0 ? (
+            <tr>
+            <td colSpan="4" style={{ textAlign: "center" }}>
+                No records found
+            </td>
             </tr>
-          ))}
+        ) : (
+            filteredData.map((item) => (
+            <tr key={item.id}>
+                <td>{item.username}</td>
+                <td>{item.status}</td>
+                <td>{calculateScore(item.data)}</td>
+                <td>
+                <button onClick={() => setSelected(item)}>
+                    View
+                </button>
+                </td>
+            </tr>
+            ))
+        )}
         </tbody>
       </table>
 
@@ -73,6 +115,12 @@ function AdminDashboard({ onLogout }) {
      )}
     <div style={{ position: "absolute", right: "20px", top: "20px" }}>
         <button onClick={onLogout}>Logout</button>
+        <button onClick={() => {
+            setSearch("");
+            setStatusFilter("");
+            }}>
+            Clear
+        </button>
     </div>
     </div>
   );

@@ -11,6 +11,25 @@ const bcrypt = require("bcrypt");
 
 const SECRET = "mysecretkey"; // move to env later
 
+//Read token
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(403).send("No token");
+  }
+
+  const token = authHeader.split(" ")[1]; // ✅ FIX
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).send("Invalid token");
+  }
+};
+
 app.get("/api/assessments", verifyToken, async (req, res) => {
   try {
     // 🔒 Only appraiser/admin allowed
@@ -19,9 +38,10 @@ app.get("/api/assessments", verifyToken, async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT id, user_id, status, data, created_at
-       FROM assessments
-       ORDER BY created_at DESC`
+      `SELECT a.id, a.user_id, u.username, a.status, a.data
+       FROM assessments a
+       JOIN users u ON a.user_id = u.id
+       ORDER BY a.created_at DESC`
     );
 
     res.json(result.rows);
@@ -59,25 +79,6 @@ app.post("/api/login", async (req, res) => {
     res.status(500).send("Login error");
   }
 });
-
-//Read token
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return res.status(403).send("No token");
-  }
-
-  const token = authHeader.split(" ")[1]; // ✅ FIX
-
-  try {
-    const decoded = jwt.verify(token, SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).send("Invalid token");
-  }
-};
 
 /**
  * SAVE DRAFT
