@@ -56,13 +56,20 @@ app.post("/api/login", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT * FROM users WHERE username = $1",
+      "SELECT * FROM users WHERE LOWER(username) = LOWER($1)",
       [username]
     );
 
     const user = result.rows[0];
 
-    if (!user || user.password !== password) {
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // 🔥 ONLY bcrypt check (NO plain comparison)
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
@@ -72,7 +79,11 @@ app.post("/api/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res.json({ token, role: user.role, user_id: user.id });
+    res.json({
+      token,
+      role: user.role,
+      user_id: user.id
+    });
 
   } catch (err) {
     console.error(err);
@@ -206,12 +217,12 @@ app.get("/api/draft", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/api/forgot-password", async (req, res) => {
-  const { username } = req.body;
+app.post("/api/reset-password", async (req, res) => {
+  const { username, newPassword } = req.body;
 
   try {
     const user = await pool.query(
-      "SELECT * FROM users WHERE username = $1",
+      "SELECT * FROM users WHERE LOWER(username) = LOWER($1)",
       [username]
     );
 
@@ -219,13 +230,19 @@ app.post("/api/forgot-password", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({
-      message: "Password reset link sent (demo)"
-    });
+    // 🔐 hash password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      "UPDATE users SET password = $1 WHERE username = $2",
+      [hashedPassword, username]
+    );
+
+    res.json({ message: "Password updated successfully" });
 
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error");
+    res.status(500).send("Error updating password");
   }
 });
 

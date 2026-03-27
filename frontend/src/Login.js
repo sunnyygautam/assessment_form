@@ -12,6 +12,8 @@ function Login({ setAuth }) {
   const [showForgot, setShowForgot] = useState(false);
   const [resetUser, setResetUser] = useState("");
   const [resetMsg, setResetMsg] = useState("");
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
 
   const login = async () => {
     let newErrors = {};
@@ -46,16 +48,45 @@ function Login({ setAuth }) {
   };
 
   const handleReset = async () => {
-    console.log("Reset user:", resetUser);
+    if (!resetUser) {
+      setResetMsg("Please enter username");
+      return;
+    }
+
+    // Just verify user exists (NO API needed)
+    setResetMsg("Enter new password");
+    setShowResetForm(true);
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!newPassword) {
+      setResetMsg("Enter new password");
+      return;
+    }
+
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/forgot-password",
-        { username: resetUser }
+        "http://localhost:5000/api/reset-password",
+        {
+          username: resetUser,
+          newPassword
+        }
       );
 
       setResetMsg(res.data.message);
+
+      // reset UI
+      setShowResetForm(false);
+      setResetUser("");
+      setNewPassword("");
+
+      setTimeout(() => {
+        setShowForgot(false);
+        setResetMsg("");
+      }, 1500);
+
     } catch (err) {
-      setResetMsg("User not found");
+      setResetMsg("Error updating password");
     }
   };
 
@@ -68,6 +99,11 @@ function Login({ setAuth }) {
   const handleResetKeyPress = (e) => {
     if (e.key === "Enter") {
       handleReset();
+    }
+  };
+  const handleUpdateKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleUpdatePassword();
     }
   };
 
@@ -129,13 +165,13 @@ function Login({ setAuth }) {
           >
             {showPassword ? "Hide" : "Show"}
           </span>
-          <span
-            onClick={() => setShowForgot(true)}
-            style={{ color: "#007bff", cursor: "pointer", fontSize: "13px" }}
-          >
-            Forgot Password?
-          </span>
         </div>
+        <span
+          onClick={() => setShowForgot(true)}
+          style={{ color: "#007bff", cursor: "pointer", fontSize: "13px" }}
+        >
+          Forgot Password?
+        </span>
 
         <label style={{ fontSize: "14px" }}>
           <input
@@ -163,7 +199,6 @@ function Login({ setAuth }) {
         <div style={styles.modal}>
           <div style={styles.modalCard}>
             <h3>Reset Password</h3>
-
             <input
               placeholder="Enter username"
               value={resetUser}
@@ -175,6 +210,23 @@ function Login({ setAuth }) {
             <button onClick={handleReset} style={styles.button}>
               Reset
             </button>
+
+            {showResetForm && (
+              <>
+                <input
+                  type="password"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={styles.input}
+                  onKeyDown={handleUpdateKeyPress}
+                />
+
+                <button onClick={handleUpdatePassword} style={styles.button}>
+                  Update Password
+                </button>
+              </>
+            )}
 
             {resetMsg && <p>{resetMsg}</p>}
 
