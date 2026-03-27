@@ -206,24 +206,27 @@ app.get("/api/draft", verifyToken, async (req, res) => {
   }
 });
 
-// app.get("/api/draft", verifyToken, async (req, res) => {
-// //  const { user_id } = req.params;
-//   const user_id = req.user.id;
-//   const { data } = req.body;
+app.post("/api/forgot-password", async (req, res) => {
+  const { username } = req.body;
 
-//   try {
-//     const result = await pool.query(
-//       `SELECT * FROM assessments
-//        WHERE user_id = $1 AND status = 'draft'
-//        ORDER BY created_at DESC LIMIT 1`,
-//       [user_id]
-//     );
+  try {
+    const user = await pool.query(
+      "SELECT * FROM users WHERE username = $1",
+      [username]
+    );
 
-//     res.json(result.rows[0] || {});
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).send("Error fetching draft");
-//   }
-// });
+    if (user.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      message: "Password reset link sent (demo)"
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error");
+  }
+});
 
 app.listen(5000, () => console.log("Server running on port 5000"));

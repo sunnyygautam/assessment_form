@@ -8,33 +8,54 @@ function Login({ setAuth }) {
   const [hover, setHover] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [showForgot, setShowForgot] = useState(false);
+  const [resetUser, setResetUser] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
 
   const login = async () => {
-    if (!username || !password) {
-      alert("Please enter username and password");
-      return;
-    }
+    let newErrors = {};
+
+    if (!username) newErrors.username = "Username is required";
+    if (!password) newErrors.password = "Password is required";
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) return;
+
     try {
       const res = await axios.post("http://localhost:5000/api/login", {
         username,
         password
       });
 
-    if (remember) {
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("role", res.data.role);
-      localStorage.setItem("username", username);
-      localStorage.setItem("password", password);   // ⚠️ not secure
-    } else {
-      sessionStorage.setItem("token", res.data.token);
-      sessionStorage.setItem("role", res.data.role);
-      localStorage.removeItem("username");
-    }
+      if (remember) {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("role", res.data.role);
+        localStorage.setItem("username", username);
+      } else {
+        sessionStorage.setItem("token", res.data.token);
+        sessionStorage.setItem("role", res.data.role);
+      }
 
       setAuth(true);
+
     } catch (err) {
-      console.error(err);
-      alert("Invalid credentials");
+      setErrors({ general: "Invalid username or password" });
+    }
+  };
+
+  const handleReset = async () => {
+    console.log("Reset user:", resetUser);
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/forgot-password",
+        { username: resetUser }
+      );
+
+      setResetMsg(res.data.message);
+    } catch (err) {
+      setResetMsg("User not found");
     }
   };
 
@@ -42,6 +63,11 @@ function Login({ setAuth }) {
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       login();
+    }
+  };
+  const handleResetKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleReset();
     }
   };
 
@@ -58,6 +84,11 @@ function Login({ setAuth }) {
       <div style={styles.card}>
         <h2>TLMTI STAFF PERFORMANCE ASSESSMENT</h2>
         <h3 style={styles.title}>🔐 Login</h3>
+        {errors.general && (
+          <div style={styles.errorBox}>
+            {errors.general}
+          </div>
+        )}
 
         <input
           type="text"
@@ -67,6 +98,9 @@ function Login({ setAuth }) {
           onKeyDown={handleKeyPress}
           style={styles.input}
         />
+        {errors.username && (
+          <span style={styles.error}>{errors.username}</span>
+        )}
 
         <div style={{ position: "relative" }}>
           <input
@@ -77,6 +111,9 @@ function Login({ setAuth }) {
             onKeyDown={handleKeyPress}
             style={{ ...styles.input, width: "93%" }}
           />
+          {errors.password && (
+            <span style={styles.error}>{errors.password}</span>
+          )}
 
           <span
             onClick={() => setShowPassword(!showPassword)}
@@ -91,6 +128,12 @@ function Login({ setAuth }) {
             }}
           >
             {showPassword ? "Hide" : "Show"}
+          </span>
+          <span
+            onClick={() => setShowForgot(true)}
+            style={{ color: "#007bff", cursor: "pointer", fontSize: "13px" }}
+          >
+            Forgot Password?
           </span>
         </div>
 
@@ -116,6 +159,31 @@ function Login({ setAuth }) {
           Login
         </button>
       </div>
+      {showForgot && (
+        <div style={styles.modal}>
+          <div style={styles.modalCard}>
+            <h3>Reset Password</h3>
+
+            <input
+              placeholder="Enter username"
+              value={resetUser}
+              onChange={(e) => setResetUser(e.target.value)}
+              style={styles.input}
+              onKeyDown={handleResetKeyPress}
+            />
+
+            <button onClick={handleReset} style={styles.button}>
+              Reset
+            </button>
+
+            {resetMsg && <p>{resetMsg}</p>}
+
+            <button onClick={() => setShowForgot(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -156,6 +224,35 @@ const styles = {
     color: "#fff",
     fontSize: "16px",
     cursor: "pointer"
+  },
+  error: {
+    color: "red",
+    fontSize: "12px"
+  },
+  errorBox: {
+    background: "#ffe6e6",
+    color: "red",
+    padding: "8px",
+    borderRadius: "5px",
+    textAlign: "center"
+  },
+  modal: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    background: "rgba(0,0,0,0.3)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  modalCard: {
+    background: "#fff",
+    padding: "20px",
+    borderRadius: "8px",
+    width: "300px",
+    textAlign: "center"
   }
 };
 
