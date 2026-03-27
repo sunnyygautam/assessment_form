@@ -29,9 +29,12 @@ function App() {
   };
 
   const handleLogout = () => {
+    console.log("Logout clicked");
     localStorage.removeItem("token");
+    sessionStorage.removeItem("token"); 
     localStorage.removeItem("role");
-    localStorage.removeItem("step");   // ✅ reset flow
+    sessionStorage.removeItem("role");
+    // localStorage.removeItem("step");   // ✅ reset flow
 
     setIsAuth(false);
 
@@ -39,6 +42,7 @@ function App() {
   };
   // 🔹 Save Draft API
   const saveDraft = async () => {
+    console.log("Saving Draft..");
     try {
       await api.post("/api/draft", {
         data: responses
@@ -58,6 +62,7 @@ function App() {
 
   // 🔹 Submit API
   const handleSubmit = async () => {
+    console.log("Form Submitting...");
     try {
       await api.post("/api/submit", {
         data: responses
@@ -73,7 +78,9 @@ function App() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token");
 
     if (!token) {
       setIsAuth(false);
