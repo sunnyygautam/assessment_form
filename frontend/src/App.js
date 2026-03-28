@@ -151,9 +151,10 @@ function App() {
 
   const calculateScore = () => {
     let total = 0;
+    const keyPrefix = role === "appraiser" ? "appraiser" : "appraisee";
 
     section2Data.forEach((_, i) => {
-      const val = responses[`appraiser-${i}`];
+      const val = responses[`${keyPrefix}-${i}`];
       if (val) total += Number(val);
     });
 
@@ -316,10 +317,20 @@ function App() {
                   {/* TEXT */}
                   {field.type === "text" && (
                     <input
-			  disabled={isReadOnly}
+                      disabled={
+                        isReadOnly ||
+                        (field.role === "appraiser" && role !== "appraiser")
+                      }
                       type="text"
-		      value={responses[field.label] || ""}
-                      style={{ width: "100%" }}
+                      value={responses[field.label] || ""}
+                      style={{ 
+                        width: "100%",                        
+                        // 🔥 Visual indicator
+                        background:
+                          field.role === "appraiser" && role !== "appraiser"
+                            ? "#f5f5f5"
+                            : "white"
+                      }}
                       onChange={(e) =>
                         handleChange(field.label, e.target.value)
                       }
@@ -329,9 +340,9 @@ function App() {
                   {/* DATE */}
                   {field.type === "date" && (
                     <input
-			  disabled={isReadOnly}
+                      disabled={isReadOnly}
                       type="date"
-		      value={responses[field.label] || ""}
+                      value={responses[field.label] || ""}
                       style={{ width: "100%" }}
                       onChange={(e) =>
                         handleChange(field.label, e.target.value)
@@ -344,11 +355,11 @@ function App() {
                     field.options.map((opt, idx) => (
                       <label key={idx} style={{ marginRight: "10px" }}>
                         <input
-			    disabled={isReadOnly}
+                          disabled={isReadOnly}
                           type="radio"
                           name={field.label}
                           value={opt}
-			  checked={responses[field.label] === String(opt)}
+                          checked={responses[field.label] === String(opt)}
                           onChange={(e) =>
                             handleChange(field.label, e.target.value)
                           }
@@ -392,14 +403,14 @@ return (
         >
           <span>{sub}</span>
           <input
-	      disabled={isReadOnly}
+            disabled={isReadOnly}
             style={{
               width: "100%",
               border: "none",
               borderBottom: "1px solid black",
               outline: "none"
             }}
-	    value={responses[`${item.question}-${sub}`] || ""}
+            value={responses[`${item.question}-${sub}`] || ""}
             onChange={(e) =>
               handleChange(
                 `${item.question}-${sub}`,
@@ -412,13 +423,20 @@ return (
     ) : (
       // 🔹 Normal textarea for other sections
       <textarea
-	    disabled={isReadOnly}
+        disabled={
+          isReadOnly ||
+          (item.role === "appraiser" && role !== "appraiser")
+        }
         style={{
           width: "100%",
           minHeight: "80px",
-          marginTop: "5px"
+          marginTop: "5px",
+          background:
+            item.role === "appraiser" && role !== "appraiser"
+              ? "#f5f5f5"
+              : "white"
         }}
-	value={responses[item.question] || ""}
+        value={responses[item.question] || ""}
         onChange={(e) =>
           handleChange(item.question, e.target.value)
         }
@@ -499,11 +517,14 @@ return (
                 {/* Appraisee */}
                 <td style={{ textAlign: "center" }}>
                   <input
-		    disabled={isReadOnly}
+                    disabled={
+                      isReadOnly ||
+                      (role !== "appraisee")
+                    }
                     type="radio"
                     name={`appraisee-${i}`}
                     value={item.score}
-		    checked={responses[`appraisee-${i}`] === String(item.score)}
+                    checked={responses[`appraisee-${i}`] === String(item.score)}
                     onChange={(e) =>
                       handleChange(`appraisee-${i}`, e.target.value)
                     }
@@ -511,13 +532,19 @@ return (
                 </td>
 
                 {/* Appraiser */}
-                <td style={{ textAlign: "center" }}>
+                <td style={{
+                  textAlign: "center",
+                  background: role !== "appraiser" ? "#f5f5f5" : "white"
+                  }}>
                   <input
-		    disabled={isReadOnly}
+                    disabled={
+                      isReadOnly ||
+                      (role !== "appraiser")
+                    }
                     type="radio"
                     name={`appraiser-${i}`}
                     value={item.score}
-		    checked={responses[`appraiser-${i}`] === String(item.score)}
+                    checked={responses[`appraiser-${i}`] === String(item.score)}
                     onChange={(e) =>
                       handleChange(`appraiser-${i}`, e.target.value)
                     }

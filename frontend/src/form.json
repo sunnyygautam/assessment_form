@@ -96,13 +96,14 @@
 
     {
       "question": "Appraiser's Comments",
-      "type": "textarea"
+      "type": "textarea",
+      "role": "appraiser"
     },
 
     {
       "type": "row",
       "fields": [
-        { "label": "Signature of Appraiser (with date)", "type": "text" },
+        { "label": "Signature of Appraiser (with date)", "type": "text", "role": "appraiser" },
         { "label": "Signature of Appraisee (with date)", "type": "text" }
       ]
     }
