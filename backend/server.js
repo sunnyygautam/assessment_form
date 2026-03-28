@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
+const path = require("path");
 
 const app = express();
 app.use(cors());
@@ -250,5 +251,13 @@ app.post("/api/reset-password", async (req, res) => {
     res.status(500).send("Error updating password");
   }
 });
+
+  // 🔥 Serve React build
+  app.use(express.static(path.join(__dirname, "build")));
+
+  // 🔥 Catch-all route (for React routing)
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "build", "index.html"));
+  });
 
 app.listen(5000, () => console.log("Server running on port 5000"));
