@@ -68,6 +68,11 @@ app.post("/api/login", async (req, res) => {
 
     // 🔥 ONLY bcrypt check (NO plain comparison)
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log("Password match:", isMatch); // 🔍 DEBUG
+    console.log("Username:", username);
+    console.log("DB user:", user);
+    console.log("Entered password:", password);
+    console.log("Stored hash:", user?.password);
 
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
