@@ -13,11 +13,17 @@ function App() {
   const [responses, setResponses] = useState({});
   const [loading, setLoading] = useState(true);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   
   const role = localStorage.getItem("role");
-  const isReadOnly = isSubmitted && role !== "appraiser";
-  
-  // const [draftId, setDraftId] = useState(null);
+  const isAppraiser = role === "appraiser";
+  // const isReadOnly = isSubmitted && role !== "appraiser";
+  const isFieldDisabled = (fieldRole) => {
+    return (
+      (fieldRole === "appraiser" && !isAppraiser) ||
+      (isSubmitted && fieldRole !== "appraiser")
+    );
+  };
 
   const isTokenExpired = (token) => {
     try {
@@ -44,6 +50,10 @@ function App() {
   // 🔹 Save Draft API
   const saveDraft = async () => {
     try {
+      const url = selectedUser
+        ? `/api/admin/draft/${selectedUser.userId}`
+        : "/api/draft";
+        
       console.log("Saving Draft..");
 
       const formPayload = new FormData();
@@ -58,7 +68,7 @@ function App() {
         }
       });
 
-      const res = await api.post("/api/draft", formPayload, {
+      const res = await api.post(url, formPayload, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
@@ -101,6 +111,9 @@ function App() {
   // 🔹 Submit API
   const handleSubmit = async () => {
     try {
+      const url = selectedUser
+        ? `/api/admin/submit/${selectedUser.userId}`
+        : "/api/submit";
       console.log("Form Submitting...");
 
       const formData = new FormData();
@@ -118,7 +131,7 @@ function App() {
         }
       });
 
-      await api.post("/api/submit", formData, {
+      await api.post(url, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
@@ -154,13 +167,20 @@ function App() {
 
     const fetchDraft = async () => {
       try {
-        const res = await api.get("/api/draft");
+        // const res = await api.get("/api/draft");
+        const res = await api.get(
+          selectedUser
+            ? `/api/admin/assessment/${selectedUser.userId}`
+            : "/api/draft"
+        );
         const savedStep = localStorage.getItem("step");
         console.log("Draft API:", res.data);
 
         if (res.data?.data) {
-          const data = res.data.data;
+        //   const data = res.data.data;
+        const apiData = selectedUser ? res.data : res.data;
 
+        const data = apiData?.data || {};
           // 🔥 map uploadedFiles to field
           if (data.uploadedFiles?.length > 0) {
             const fileField = formData.section1
@@ -171,10 +191,10 @@ function App() {
               data[fileField.label] = data.uploadedFiles[0];
             }
           }
-
+          if (data) {
           setResponses(data);
-          console.log("Final responses:", data);
-          
+          console.log("Loaded responses:", data);
+          }
           // setDraftId(res.data.id);
         }
 
@@ -196,15 +216,23 @@ function App() {
 
     fetchDraft();
 
-  }, [isAuth]);   // 🔥 THIS IS THE FIX
+  }, [isAuth, selectedUser]);   // 🔥 THIS IS THE FIX
 
   if (!isAuth) {
     return <Login setAuth={setIsAuth} />;
   }
 
-  if (role === "appraiser") {
-    return <AdminDashboard onLogout={handleLogout} />;
+  if (role === "appraiser" && !selectedUser) {
+    return (
+      <AdminDashboard
+        onLogout={handleLogout}
+        onSelectUser={setSelectedUser}
+      />
+    );
   }
+  // if (role === "appraiser") {
+  //   return <AdminDashboard onLogout={handleLogout} />;
+  // }
 
   if (loading) {
     return <h2>Loading data...</h2>;
@@ -327,7 +355,15 @@ function App() {
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
     <div style={{ position: "absolute", right: "20px", top: "20px" }}>
-     <button onClick={handleLogout}>Logout</button>
+      {role === "appraiser" && selectedUser && (
+        <button 
+          onClick={() => setSelectedUser(null)}
+          style={{ marginBottom: "10px" }}
+        >
+          ← Back to Dashboard
+        </button>
+      )}
+     <button onClick={handleLogout} style={{marginLeft: "10px"}}>Logout</button>
     </div>
       <h2 style={{ textAlign: "center" }}>
         TLMTI STAFF PERFORMANCE ASSESSMENT 2025
@@ -388,9 +424,18 @@ function App() {
                   {field.type === "text" && (
                     <input
                       disabled={
-                        isReadOnly ||
-                        (field.role === "appraiser" && role !== "appraiser")
+                        (
+                        // Appraiser-only field → only appraiser can edit
+                        (field.role === "appraiser" && !isAppraiser) ||
+
+                        // Appraisee fields → lock after submit
+                        (isSubmitted && field.role !== "appraiser")
+                        )
                       }
+                      // disabled={
+                      //   isReadOnly ||
+                      //   (field.role === "appraiser" && role !== "appraiser")
+                      // }
                       type="text"
                       value={responses[field.label] || ""}
                       style={{ 
@@ -410,7 +455,7 @@ function App() {
                   {/* DATE */}
                   {field.type === "date" && (
                     <input
-                      disabled={isReadOnly}
+                      disabled={isFieldDisabled(field.role)}
                       type="date"
                       value={responses[field.label] || ""}
                       style={{ width: "100%" }}
@@ -425,7 +470,7 @@ function App() {
                     field.options.map((opt, idx) => (
                       <label key={idx} style={{ marginRight: "10px" }}>
                         <input
-                          disabled={isReadOnly}
+                          disabled={isFieldDisabled(field.role)}
                           type="radio"
                           name={field.label}
                           value={opt}
@@ -442,7 +487,7 @@ function App() {
                       <>
                         <input
                           type="file"
-                          disabled={isReadOnly}
+                          disabled={isFieldDisabled(field.role)}
                           onChange={(e) => {
                             const file = e.target.files[0];
                             if (file) {
@@ -510,7 +555,10 @@ return (
         >
           <span>{sub}</span>
           <input
-            disabled={isReadOnly}
+            disabled={
+              (item.role === "appraiser" && !isAppraiser) ||
+              (isSubmitted && item.role !== "appraiser") 
+            }
             style={{
               width: "100%",
               border: "none",
@@ -531,9 +579,13 @@ return (
       // 🔹 Normal textarea for other sections
       <textarea
         disabled={
-          isReadOnly ||
-          (item.role === "appraiser" && role !== "appraiser")
+          (item.role === "appraiser" && !isAppraiser) ||
+          (isSubmitted && item.role !== "appraiser")
         }
+        // disabled={
+        //   isReadOnly ||
+        //   (item.role === "appraiser" && role !== "appraiser")
+        // }
         style={{
           width: "100%",
           minHeight: "80px",
@@ -552,7 +604,8 @@ return (
   </div>
 );
       })}
-  {!isSubmitted && (
+  {/* {((!isSubmitted) || isAppraiser) && ( */}
+  {(!isSubmitted) && (
     <>
       <button
         onClick={saveDraft}
@@ -625,8 +678,8 @@ return (
                 <td style={{ textAlign: "center" }}>
                   <input
                     disabled={
-                      isReadOnly ||
-                      (role !== "appraisee")
+                      isSubmitted ||
+                      role !== "appraisee"
                     }
                     type="radio"
                     name={`appraisee-${i}`}
@@ -645,8 +698,8 @@ return (
                   }}>
                   <input
                     disabled={
-                      isReadOnly ||
-                      (role !== "appraiser")
+                      // isSubmitted ||
+                      role !== "appraiser"
                     }
                     type="radio"
                     name={`appraiser-${i}`}
@@ -700,7 +753,7 @@ return (
           Back
       </button>
     )}
-  {!isSubmitted && (
+  {(!isSubmitted) && (
    <>
     <button
         onClick={saveDraft}
@@ -712,13 +765,18 @@ return (
       >
         Save Draft
     </button>
+    </>
+    )}
+    {((!isSubmitted) || isAppraiser) && (
+      <>
     <button
-	onClick={handleSubmit}
+      onClick={handleSubmit}
 	// onClick={async () => {
 	//     handleSubmit();
   //   }}
-	    style={{ marginLeft: "10px", padding: "10px 20px", marginTop: "20px" }}>
-      Save & Submit
+	    style={{ marginLeft: "10px", padding: "10px 20px" }}>
+      {isAppraiser ? "Submit Appraiser Review" : "Save & Submit"}
+      {/* Save & Submit */}
     </button>
   </>
   )}

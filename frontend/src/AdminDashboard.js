@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "./api";
 
-function AdminDashboard({ onLogout }) {
+function AdminDashboard({ onLogout, onSelectUser }) {
   const [data, setData] = useState([]);
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
@@ -89,10 +89,23 @@ function AdminDashboard({ onLogout }) {
             <tr key={item.id}>
                 <td>{item.username}</td>
                 <td>{item.status}</td>
-                <td>{calculateScore(item.data)}</td>
+                <td>{calculateScore(item.data || {})}</td>
                 <td>
                 <button onClick={() => setSelected(item)}>
                     View
+                </button>
+                {/* <button onClick={() => onSelectUser(item)}> */}
+                <button
+                  disabled={!item.data}
+                  style={{ marginLeft: "10px" }}
+                  onClick={() =>
+                    onSelectUser({
+                      userId: item.user_id,
+                      username: item.username
+                    })
+                  }
+                >
+                  ✏️ Open Form
                 </button>
                 </td>
             </tr>
@@ -112,7 +125,7 @@ function AdminDashboard({ onLogout }) {
 
           <button onClick={() => setSelected(null)}>Close</button>
         </div>
-     )}
+      )}
     <div style={{ position: "absolute", right: "20px", top: "20px" }}>
         <button onClick={onLogout}>Logout</button>
         <button onClick={() => {
