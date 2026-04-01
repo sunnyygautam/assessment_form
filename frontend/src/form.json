@@ -77,7 +77,7 @@
       "fields": [
         {
           "label": "I. Kindly attach your Job Description for 2026 duly signed by both Appraisee and Appraiser",
-          "type": "radio",
+          "type": "file",
           "options": ["Mandatory"]
         }
       ]

@@ -2,6 +2,15 @@ const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
 const path = require("path");
+const multer = require("multer");
+const storage = multer.diskStorage({
+  destination: "uploads/",
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
+});
+
+const upload = multer({ storage });
 
 const app = express();
 app.use(cors());
@@ -101,12 +110,11 @@ app.post("/api/login", async (req, res) => {
  * SAVE DRAFT
  */
 
-app.post("/api/draft", verifyToken, async (req, res) => {
+app.post("/api/draft", verifyToken, upload.any(), async (req, res) => {
   const user_id = req.user.id;
-  const { data } = req.body;
 
   try {
-    // 🔥 Check if already submitted
+    // 🔥 check submitted
     const submittedCheck = await pool.query(
       `SELECT * FROM assessments 
        WHERE user_id = $1 AND status = 'submitted'`,
@@ -119,74 +127,209 @@ app.post("/api/draft", verifyToken, async (req, res) => {
       });
     }
 
-    // ✅ Normal UPSERT for draft
+    // 🔥 get existing draft
+    const existing = await pool.query(
+      `SELECT * FROM assessments 
+       WHERE user_id = $1 AND status = 'draft'`,
+      [user_id]
+    );
+
+    let existingData = existing.rows[0]?.data || {};
+
+    // 🔥 merge fields
+    let newData = {
+      ...existingData,
+      ...req.body
+    };
+
+    // 🔥 attach files
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        newData[file.fieldname] = file.filename;
+      });
+    }
+
     const result = await pool.query(
       `INSERT INTO assessments (user_id, data, status)
        VALUES ($1, $2, 'draft')
        ON CONFLICT (user_id, status)
        DO UPDATE SET
-         data = EXCLUDED.data,
+         data = $2,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
-      [user_id, data]
+      [user_id, newData]
     );
 
-    res.json(result.rows[0]);
+    res.json({
+      success: true,
+      data: result.rows[0].data
+    });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error saving draft");
+    console.error("Draft error:", err);
+    res.status(500).json({ message: "Error saving draft" });
   }
 });
 
 /**
  * FINAL SUBMIT
  */
-
-app.post("/api/submit", verifyToken, async (req, res) => {
+app.post("/api/submit", verifyToken, upload.any(), async (req, res) => {
   const user_id = req.user.id;
-  const { data } = req.body;
 
   try {
-    const result = await pool.query(
-      `UPDATE assessments
-       SET data = $2,
-           status = 'submitted',
-           updated_at = CURRENT_TIMESTAMP
-       WHERE user_id = $1 AND status = 'draft'
-       RETURNING *`,
-      [user_id, data]
+    // 🔥 Check if already submitted
+    const submittedCheck = await pool.query(
+      `SELECT * FROM assessments 
+       WHERE user_id = $1 AND status = 'submitted'`,
+      [user_id]
     );
 
-    // 🔥 If no draft exists → insert new
-    if (result.rows.length === 0) {
-      const insert = await pool.query(
-        `INSERT INTO assessments (user_id, data, status)
-         VALUES ($1, $2, 'submitted')
-         RETURNING *`,
-        [user_id, data]
-      );
-
-      return res.json(insert.rows[0]);
-    }
-
-    res.json(result.rows[0]);
-
-  } catch (err) {
-    console.error(err);
-        // 🔥 Handle duplicate submission
-    if (err.code === "23505") {
+    if (submittedCheck.rows.length > 0) {
       return res.status(400).json({
         message: "Form already submitted"
       });
     }
 
-    res.status(500).json({
+    // 🔥 Get existing draft (if any)
+    const existing = await pool.query(
+      `SELECT * FROM assessments 
+       WHERE user_id = $1 AND status = 'draft'`,
+      [user_id]
+    );
+
+    let existingData = existing.rows[0]?.data || {};
+
+    // 🔥 Merge incoming text fields
+    let newData = {
+      ...existingData,
+      ...req.body
+    };
+
+    // 🔥 Attach uploaded files (per field)
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        newData[file.fieldname] = file.filename;
+      });
+    }
+
+    let result;
+
+    // 🔥 If draft exists → update it to submitted
+    if (existing.rows.length > 0) {
+      result = await pool.query(
+        `UPDATE assessments
+         SET data = $2,
+             status = 'submitted',
+             updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = $1 AND status = 'draft'
+         RETURNING *`,
+        [user_id, newData]
+      );
+    } 
+    // 🔥 Else insert new
+    else {
+      result = await pool.query(
+        `INSERT INTO assessments (user_id, data, status)
+         VALUES ($1, $2, 'submitted')
+         RETURNING *`,
+        [user_id, newData]
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Form submitted successfully",
+      data: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("Submit Error:", err);
+
+    return res.status(500).json({
+      success: false,
       message: "Error submitting form"
     });
-//    res.status(500).send("Error submitting form");
   }
 });
+// app.post("/api/submit", verifyToken, upload.any(), async (req, res) => {
+//   const user_id = req.user.id;
+
+//   try {
+//     // 🔥 Check if already submitted
+//     const submittedCheck = await pool.query(
+//       `SELECT * FROM assessments 
+//        WHERE user_id = $1 AND status = 'submitted'`,
+//       [user_id]
+//     );
+
+//     if (submittedCheck.rows.length > 0) {
+//       return res.status(400).json({
+//         message: "Form already submitted"
+//       });
+//     }
+
+//     // 🔥 Get existing draft (if any)
+//     const existing = await pool.query(
+//       `SELECT * FROM assessments 
+//        WHERE user_id = $1 AND status = 'draft'`,
+//       [user_id]
+//     );
+
+//     let existingData = existing.rows[0]?.data || {};
+
+//     // 🔥 Merge incoming text fields
+//     let newData = {
+//       ...existingData,
+//       ...req.body
+//     };
+
+//     // 🔥 Attach uploaded files (per field)
+//     if (req.files && req.files.length > 0) {
+//       req.files.forEach(file => {
+//         newData[file.fieldname] = file.filename;
+//       });
+//     }
+
+//     let result;
+
+//     // 🔥 If draft exists → update it to submitted
+//     if (existing.rows.length > 0) {
+//       result = await pool.query(
+//         `UPDATE assessments
+//          SET data = $2,
+//              status = 'submitted',
+//              updated_at = CURRENT_TIMESTAMP
+//          WHERE user_id = $1 AND status = 'draft'
+//          RETURNING *`,
+//         [user_id, newData]
+//       );
+//     } 
+//     // 🔥 Else insert new
+//     else {
+//       result = await pool.query(
+//         `INSERT INTO assessments (user_id, data, status)
+//          VALUES ($1, $2, 'submitted')
+//          RETURNING *`,
+//         [user_id, newData]
+//       );
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Form submitted successfully",
+//       data: result.rows[0]
+//     });
+
+//   } catch (err) {
+//     console.error("Submit Error:", err);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Error submitting form"
+//     });
+//   }
+// });
 
 /**
  * GET DRAFT
@@ -254,6 +397,7 @@ app.post("/api/reset-password", async (req, res) => {
 
   // 🔥 Serve React build
   app.use(express.static(path.join(__dirname, "build")));
+  app.use("/uploads", express.static("uploads"));
 
   // 🔥 Catch-all route (for React routing)
   app.get("*", (req, res) => {

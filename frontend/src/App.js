@@ -7,7 +7,7 @@ import Login from "./Login";
 import AdminDashboard from "./AdminDashboard";
 
 function App() {
-  console.log("App Loaded ✅");
+  // console.log("App Loaded ✅");
   const [isAuth, setIsAuth] = useState(false);
   const [step, setStep] = useState(1);
   const [responses, setResponses] = useState({});
@@ -17,7 +17,7 @@ function App() {
   const role = localStorage.getItem("role");
   const isReadOnly = isSubmitted && role !== "appraiser";
   
-  const [draftId, setDraftId] = useState(null);
+  // const [draftId, setDraftId] = useState(null);
 
   const isTokenExpired = (token) => {
     try {
@@ -40,21 +40,59 @@ function App() {
 
     window.location.reload(); // optional but clean reset
   };
+
   // 🔹 Save Draft API
   const saveDraft = async () => {
-    console.log("Saving Draft..");
     try {
-      await api.post("/api/draft", {
-        data: responses
+      console.log("Saving Draft..");
+
+      const formPayload = new FormData();
+
+      Object.keys(responses).forEach((key) => {
+        const value = responses[key];
+
+        if (value instanceof File) {
+          formPayload.append(key, value);
+        } else {
+          formPayload.append(key, value);
+        }
       });
 
-      alert("Draft saved");
+      const res = await api.post("/api/draft", formPayload, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      console.log("Draft response:", res.data);
+
+      if (res.status === 200 || res.status === 201) {
+        alert("Draft saved");
+      }
+
+      const data = res.data.data;
+
+      // ✅ FIXED mapping
+      if (data.uploadedFiles?.length > 0) {
+        const fileField = formData.section1
+          .flatMap(item => item.fields || [])
+          .find(field => field.type === "file");
+
+        if (fileField) {
+          data[fileField.label] = data.uploadedFiles[0];
+        }
+      }
+
+      // ✅ FIXED
+      setResponses(data);
+
     } catch (err) {
-      console.error(err);
-      if (err.response?.data?.message === "Form already submitted. Draft not allowed.") {
-        alert("⚠️ Form already submitted. You cannot save draft.");
-        setIsSubmitted(true); // 🔥 lock UI
+      console.error("Draft Error:", err);
+
+      if (!err.response) {
+        alert("Server not reachable");
+      } else if (err.response.data?.message) {
+        alert(err.response.data.message);
       } else {
+        console.log("Response:", err.response);
         alert("Error saving draft");
       }
     }
@@ -62,15 +100,32 @@ function App() {
 
   // 🔹 Submit API
   const handleSubmit = async () => {
-    console.log("Form Submitting...");
     try {
-      await api.post("/api/submit", {
-        data: responses
+      console.log("Form Submitting...");
+
+      const formData = new FormData();
+
+      // Object.keys(responses).forEach((key) => {
+      //   formData.append(key, responses[key]);
+      // });
+      Object.keys(responses).forEach((key) => {
+        const value = responses[key];
+
+        if (value instanceof File) {
+          formData.append(key, value); // ✅ file
+        } else {
+          formData.append(key, value); // text
+        }
+      });
+
+      await api.post("/api/submit", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
 
       alert("Form submitted successfully");
-      localStorage.removeItem("step");   // ✅ reset flow
+      localStorage.removeItem("step");
       setIsSubmitted(true);
+
     } catch (err) {
       console.error("Submit error:", err);
       alert("Error submitting form");
@@ -104,8 +159,23 @@ function App() {
         console.log("Draft API:", res.data);
 
         if (res.data?.data) {
-          setResponses(res.data.data);
-          setDraftId(res.data.id);
+          const data = res.data.data;
+
+          // 🔥 map uploadedFiles to field
+          if (data.uploadedFiles?.length > 0) {
+            const fileField = formData.section1
+              .flatMap(item => item.fields || [])
+              .find(field => field.type === "file");
+
+            if (fileField) {
+              data[fileField.label] = data.uploadedFiles[0];
+            }
+          }
+
+          setResponses(data);
+          console.log("Final responses:", data);
+          
+          // setDraftId(res.data.id);
         }
 
         if (res.data?.status === "submitted") {
@@ -367,6 +437,43 @@ function App() {
                         {opt}
                       </label>
                     ))}
+
+                    {field.type === "file" && (
+                      <>
+                        <input
+                          type="file"
+                          disabled={isReadOnly}
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              handleChange(field.label, file);
+                            }
+                          }}
+                        />
+
+                        {/* Selected file */}
+                        {responses[field.label] instanceof File && (
+                          <p style={{ fontSize: "12px", color: "blue" }}>
+                            Selected: {responses[field.label].name}
+                          </p>
+                        )}
+
+                        {/* View file */}
+                        {responses[field.label] &&
+                          !(responses[field.label] instanceof File) && (
+                            <div style={{ marginTop: "5px" }}>
+                              <a
+                                href={`${process.env.REACT_APP_API_URL}/uploads/${responses[field.label]}`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                View Uploaded File
+                              </a>
+                            </div>
+                        )}
+                      </>
+                    )}
+
                 </div>
               ))}
             </div>
@@ -448,7 +555,7 @@ return (
   {!isSubmitted && (
     <>
       <button
-	onClick={saveDraft}
+        onClick={saveDraft}
         style={{
           padding: "10px 20px",
           fontSize: "14px",
@@ -606,10 +713,10 @@ return (
         Save Draft
     </button>
     <button
-	// onClick={handleSubmit}
-	onClick={async () => {
-	    handleSubmit();
-    }}
+	onClick={handleSubmit}
+	// onClick={async () => {
+	//     handleSubmit();
+  //   }}
 	    style={{ marginLeft: "10px", padding: "10px 20px", marginTop: "20px" }}>
       Save & Submit
     </button>
