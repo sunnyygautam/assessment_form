@@ -258,6 +258,18 @@ function App() {
 
     return total;
   };
+  const calculateTotal = () => {
+    let total = 0;
+
+    const prefix = isAppraiser ? "appraiser" : "appraiser";
+
+    for (let i = 0; i < 10; i++) {
+      const val = responses[`${prefix}-${i}`];
+      if (val) total += Number(val);
+    }
+
+    return total;
+  };
 
   const section2Data = [
     {
@@ -718,9 +730,12 @@ return (
     </table>
 
     {/* 🔹 Score */}
-    <h3 style={{ marginTop: "20px" }}>
-      Grand Total: {calculateScore()} / 40
+    <h3 style={{ marginTop: "10px" }}>
+      Appraisee Score: {calculateScore()} / 40
     </h3>
+    <h3 style={{ marginTop: "10px" }}>
+      Appraiser Score: {calculateTotal()} / 40
+      </h3>
 	<p style={{ textAlign: 'center' }}>Over All Rating (Total Score - 40),
 	10 to 15 = POOR,
 	16-25 = AVERAGE,

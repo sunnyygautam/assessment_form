@@ -21,13 +21,25 @@ function AdminDashboard({ onLogout, onSelectUser }) {
     }
   };
 
-  const calculateScore = (responses) => {
+  // const calculateScore = (responses) => {
+  //   let total = 0;
+
+  //   for (let i = 0; i < 10; i++) {
+  //     const val = responses[`appraiser-${i}`];
+  //     if (val) total += Number(val);
+  //   }
+  //   return total;
+  // };
+  const calculateScore = (responses, role) => {
     let total = 0;
 
+    const prefix = role === "appraiser" ? "appraiser" : "appraisee";
+
     for (let i = 0; i < 10; i++) {
-      const val = responses[`appraiser-${i}`];
+      const val = responses[`${prefix}-${i}`];
       if (val) total += Number(val);
     }
+
     return total;
   };
 
@@ -89,7 +101,11 @@ function AdminDashboard({ onLogout, onSelectUser }) {
             <tr key={item.id}>
                 <td>{item.username}</td>
                 <td>{item.status}</td>
-                <td>{calculateScore(item.data || {})}</td>
+                <td>
+                  {/* {calculateScore(item.data || {}, "appraiser")} */}
+                  Appraisee: {calculateScore(item.data, "appraisee")} <br />
+                  Appraiser: {calculateScore(item.data, "appraiser")}
+                </td>
                 <td>
                 <button onClick={() => setSelected(item)}>
                     View
