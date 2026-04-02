@@ -5,6 +5,9 @@ import { useEffect } from "react";
 import api from "./api";
 import Login from "./Login";
 import AdminDashboard from "./AdminDashboard";
+import { useRef } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 function App() {
   // console.log("App Loaded ✅");
@@ -14,7 +17,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  
+  const formRef = useRef();
+
   const role = localStorage.getItem("role");
   const isAppraiser = role === "appraiser";
   // const isReadOnly = isSubmitted && role !== "appraiser";
@@ -145,6 +149,39 @@ function App() {
     }
   };
 
+  // Export Function
+  const exportPDF = async () => {
+  const element = formRef.current;
+
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true
+  });
+
+  const imgData = canvas.toDataURL("image/png");
+
+  const pdf = new jsPDF("p", "mm", "a4");
+
+  const imgWidth = 210;
+  const pageHeight = 295;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+
+  pdf.save("Appraisal_Form.pdf");
+  };
+
   useEffect(() => {
     const token =
       localStorage.getItem("token") ||
@@ -230,9 +267,6 @@ function App() {
       />
     );
   }
-  // if (role === "appraiser") {
-  //   return <AdminDashboard onLogout={handleLogout} />;
-  // }
 
   if (loading) {
     return <h2>Loading data...</h2>;
@@ -247,23 +281,10 @@ function App() {
     return <h2>Loading form...</h2>;
   }
 
-  const calculateScore = () => {
-    let total = 0;
-    const keyPrefix = role === "appraiser" ? "appraiser" : "appraisee";
-
-    section2Data.forEach((_, i) => {
-      const val = responses[`${keyPrefix}-${i}`];
-      if (val) total += Number(val);
-    });
-
-    return total;
-  };
-  const calculateTotal = () => {
+  const calculateScoreByRole = (prefix) => {
     let total = 0;
 
-    const prefix = isAppraiser ? "appraiser" : "appraiser";
-
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < section2Data.length; i++) {
       const val = responses[`${prefix}-${i}`];
       if (val) total += Number(val);
     }
@@ -271,6 +292,7 @@ function App() {
     return total;
   };
 
+// Section 2 Form content
   const section2Data = [
     {
       title: "JOB KNOWLEDGE (Technical/Subject knowledge of the job)",
@@ -364,8 +386,9 @@ function App() {
     }
   ];
 
+// Main return UI
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
+    <div style={{ padding: "20px", fontFamily: "Arial" }} ref={formRef} id="print-section">
     <div style={{ position: "absolute", right: "20px", top: "20px" }}>
       {role === "appraiser" && selectedUser && (
         <button 
@@ -391,413 +414,427 @@ function App() {
           🔒 Form already submitted (Read-only mode)
       </h5>
       )}
-{(step === 1 || isSubmitted) && (
-  <>
-	{formData.section1.map((item, index) => {
+  {(step === 1 || isSubmitted) && (
+    <>
+    {formData.section1.map((item, index) => {
 
-        // 🔹 SECTION TITLE
-        if (item.type === "sectionTitle") {
-          return (
-            <h3 key={index} style={{ textAlign: "center", marginTop: "20px" }}>
-              {item.label}
-            </h3>
-          );
-        }
+          // 🔹 SECTION TITLE
+          if (item.type === "sectionTitle") {
+            return (
+              <h3 key={index} style={{ textAlign: "center", marginTop: "20px" }}>
+                {item.label}
+              </h3>
+            );
+          }
 
-        // 🔹 INFO TEXT
-        if (item.type === "info") {
-          return (
-            <p key={index} style={{ textAlign: "center", fontSize: "14px" }}>
-              {item.label}
-            </p>
-          );
-        }
+          // 🔹 INFO TEXT
+          if (item.type === "info") {
+            return (
+              <p key={index} style={{ textAlign: "center", fontSize: "14px" }}>
+                {item.label}
+              </p>
+            );
+          }
 
-        // 🔹 ROW (Top fields + Yes/No)
-        if (item.type === "row") {
-          return (
-            <div
-              key={index}
-              style={{
-                display: "flex",
-                gap: "20px",
-                marginBottom: "15px",
-                borderBottom: "1px solid #ccc",
-                paddingBottom: "10px"
-              }}
-            >
-              {item.fields.map((field, i) => (
-                <div key={i} style={{ flex: 1 }}>
-                  <label style={{ fontWeight: "bold", display: "block" }}>
-                    {field.label}
-                  </label>
+          // 🔹 ROW (Top fields + Yes/No)
+          if (item.type === "row") {
+            return (
+              <div
+                key={index}
+                style={{
+                  display: "flex",
+                  gap: "20px",
+                  marginBottom: "15px",
+                  borderBottom: "1px solid #ccc",
+                  paddingBottom: "10px"
+                }}
+              >
+                {item.fields.map((field, i) => (
+                  <div key={i} style={{ flex: 1 }}>
+                    <label style={{ fontWeight: "bold", display: "block" }}>
+                      {field.label}
+                    </label>
 
-                  {/* TEXT */}
-                  {field.type === "text" && (
-                    <input
-                      disabled={
-                        (
-                        // Appraiser-only field → only appraiser can edit
-                        (field.role === "appraiser" && !isAppraiser) ||
+                    {/* TEXT */}
+                    {field.type === "text" && (
+                      <input
+                        disabled={
+                          (
+                          // Appraiser-only field → only appraiser can edit
+                          (field.role === "appraiser" && !isAppraiser) ||
 
-                        // Appraisee fields → lock after submit
-                        (isSubmitted && field.role !== "appraiser")
-                        )
-                      }
-                      // disabled={
-                      //   isReadOnly ||
-                      //   (field.role === "appraiser" && role !== "appraiser")
-                      // }
-                      type="text"
-                      value={responses[field.label] || ""}
-                      style={{ 
-                        width: "100%",                        
-                        // 🔥 Visual indicator
-                        background:
-                          field.role === "appraiser" && role !== "appraiser"
-                            ? "#f5f5f5"
-                            : "white"
-                      }}
-                      onChange={(e) =>
-                        handleChange(field.label, e.target.value)
-                      }
-                    />
-                  )}
-
-                  {/* DATE */}
-                  {field.type === "date" && (
-                    <input
-                      disabled={isFieldDisabled(field.role)}
-                      type="date"
-                      value={responses[field.label] || ""}
-                      style={{ width: "100%" }}
-                      onChange={(e) =>
-                        handleChange(field.label, e.target.value)
-                      }
-                    />
-                  )}
-
-                  {/* RADIO */}
-                  {field.type === "radio" &&
-                    field.options.map((opt, idx) => (
-                      <label key={idx} style={{ marginRight: "10px" }}>
-                        <input
-                          disabled={isFieldDisabled(field.role)}
-                          type="radio"
-                          name={field.label}
-                          value={opt}
-                          checked={responses[field.label] === String(opt)}
-                          onChange={(e) =>
-                            handleChange(field.label, e.target.value)
-                          }
-                        />
-                        {opt}
-                      </label>
-                    ))}
-
-                    {field.type === "file" && (
-                      <>
-                        <input
-                          type="file"
-                          disabled={isFieldDisabled(field.role)}
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                              handleChange(field.label, file);
-                            }
-                          }}
-                        />
-
-                        {/* Selected file */}
-                        {responses[field.label] instanceof File && (
-                          <p style={{ fontSize: "12px", color: "blue" }}>
-                            Selected: {responses[field.label].name}
-                          </p>
-                        )}
-
-                        {/* View file */}
-                        {responses[field.label] &&
-                          !(responses[field.label] instanceof File) && (
-                            <div style={{ marginTop: "5px" }}>
-                              <a
-                                href={`${process.env.REACT_APP_API_URL}/uploads/${responses[field.label]}`}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                View Uploaded File
-                              </a>
-                            </div>
-                        )}
-                      </>
+                          // Appraisee fields → lock after submit
+                          (isSubmitted && field.role !== "appraiser")
+                          )
+                        }
+                        // disabled={
+                        //   isReadOnly ||
+                        //   (field.role === "appraiser" && role !== "appraiser")
+                        // }
+                        type="text"
+                        value={responses[field.label] || ""}
+                        style={{ 
+                          width: "100%",                        
+                          // 🔥 Visual indicator
+                          background:
+                            field.role === "appraiser" && role !== "appraiser"
+                              ? "#f5f5f5"
+                              : "white"
+                        }}
+                        onChange={(e) =>
+                          handleChange(field.label, e.target.value)
+                        }
+                      />
                     )}
 
-                </div>
-              ))}
-            </div>
-          );
-        }
+                    {/* DATE */}
+                    {field.type === "date" && (
+                      <input
+                        disabled={isFieldDisabled(field.role)}
+                        type="date"
+                        value={responses[field.label] || ""}
+                        style={{ width: "100%" }}
+                        onChange={(e) =>
+                          handleChange(field.label, e.target.value)
+                        }
+                      />
+                    )}
 
-        // 🔹 TEXTAREA SECTIONS (A–G)
-        // 🔹 TEXTAREA SECTIONS (A–G)
-return (
-  <div
-    key={index}
-    style={{
-      marginBottom: "20px",
-      border: "1px solid #ccc",
-      padding: "10px",
-      background: "#f9f9f9"
-    }}
-  >
-    <label style={{ fontWeight: "bold" }}>
-      {item.question}
-    </label>
+                    {/* RADIO */}
+                    {field.type === "radio" &&
+                      field.options.map((opt, idx) => (
+                        <label key={idx} style={{ marginRight: "10px" }}>
+                          <input
+                            disabled={isFieldDisabled(field.role)}
+                            type="radio"
+                            name={field.label}
+                            value={opt}
+                            checked={responses[field.label] === String(opt)}
+                            onChange={(e) =>
+                              handleChange(field.label, e.target.value)
+                            }
+                          />
+                          {opt}
+                        </label>
+                      ))}
 
-    {/* 🔥 IF subQuestions exist → ONLY show 1,2,3 inputs */}
-    {item.subQuestions ? (
-      item.subQuestions.map((sub, i) => (
-        <div
-          key={i}
+                      {field.type === "file" && (
+                        <>
+                          <input
+                            type="file"
+                            disabled={isFieldDisabled(field.role)}
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                handleChange(field.label, file);
+                              }
+                            }}
+                          />
+
+                          {/* Selected file */}
+                          {responses[field.label] instanceof File && (
+                            <p style={{ fontSize: "12px", color: "blue" }}>
+                              Selected: {responses[field.label].name}
+                            </p>
+                          )}
+
+                          {/* View file */}
+                          {responses[field.label] &&
+                            !(responses[field.label] instanceof File) && (
+                              <div style={{ marginTop: "5px" }}>
+                                <a
+                                  href={`${process.env.REACT_APP_API_URL}/uploads/${responses[field.label]}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  View Uploaded File
+                                </a>
+                              </div>
+                          )}
+                        </>
+                      )}
+
+                  </div>
+                ))}
+              </div>
+            );
+          }
+
+          // 🔹 TEXTAREA SECTIONS (A–G)
+          // 🔹 TEXTAREA SECTIONS (A–G)
+  return (
+    <div
+      key={index}
+      style={{
+        marginBottom: "20px",
+        border: "1px solid #ccc",
+        padding: "10px",
+        background: "#f9f9f9"
+      }}
+    >
+      <label style={{ fontWeight: "bold" }}>
+        {item.question}
+      </label>
+
+      {/* 🔥 IF subQuestions exist → ONLY show 1,2,3 inputs */}
+      {item.subQuestions ? (
+        item.subQuestions.map((sub, i) => (
+          <div
+            key={i}
+            style={{
+              marginTop: "10px",
+              display: "flex",
+              gap: "10px",
+              alignItems: "center"
+            }}
+          >
+            <span>{sub}</span>
+            <input
+              disabled={
+                (item.role === "appraiser" && !isAppraiser) ||
+                (isSubmitted && item.role !== "appraiser") 
+              }
+              style={{
+                width: "100%",
+                border: "none",
+                borderBottom: "1px solid black",
+                outline: "none"
+              }}
+              value={responses[`${item.question}-${sub}`] || ""}
+              onChange={(e) =>
+                handleChange(
+                  `${item.question}-${sub}`,
+                  e.target.value
+                )
+              }
+            />
+          </div>
+        ))
+      ) : (
+        // 🔹 Normal textarea for other sections
+        <textarea
+          disabled={
+            (item.role === "appraiser" && !isAppraiser) ||
+            (isSubmitted && item.role !== "appraiser")
+          }
+          // disabled={
+          //   isReadOnly ||
+          //   (item.role === "appraiser" && role !== "appraiser")
+          // }
           style={{
-            marginTop: "10px",
-            display: "flex",
-            gap: "10px",
-            alignItems: "center"
+            width: "100%",
+            minHeight: "80px",
+            marginTop: "5px",
+            background:
+              item.role === "appraiser" && role !== "appraiser"
+                ? "#f5f5f5"
+                : "white"
+          }}
+          value={responses[item.question] || ""}
+          onChange={(e) =>
+            handleChange(item.question, e.target.value)
+          }
+        />
+      )}
+    </div>
+  );
+        })}
+    {/* {((!isSubmitted) || isAppraiser) && ( */}
+    {(!isSubmitted) && (
+      <>
+        <button
+          onClick={saveDraft}
+          style={{
+            padding: "10px 20px",
+            fontSize: "14px",
+            marginTop: "20px",
+            marginRight: "10px"
           }}
         >
-          <span>{sub}</span>
-          <input
-            disabled={
-              (item.role === "appraiser" && !isAppraiser) ||
-              (isSubmitted && item.role !== "appraiser") 
-            }
-            style={{
-              width: "100%",
-              border: "none",
-              borderBottom: "1px solid black",
-              outline: "none"
-            }}
-            value={responses[`${item.question}-${sub}`] || ""}
-            onChange={(e) =>
-              handleChange(
-                `${item.question}-${sub}`,
-                e.target.value
-              )
-            }
-          />
-        </div>
-      ))
-    ) : (
-      // 🔹 Normal textarea for other sections
-      <textarea
-        disabled={
-          (item.role === "appraiser" && !isAppraiser) ||
-          (isSubmitted && item.role !== "appraiser")
-        }
-        // disabled={
-        //   isReadOnly ||
-        //   (item.role === "appraiser" && role !== "appraiser")
-        // }
-        style={{
-          width: "100%",
-          minHeight: "80px",
-          marginTop: "5px",
-          background:
-            item.role === "appraiser" && role !== "appraiser"
-              ? "#f5f5f5"
-              : "white"
-        }}
-        value={responses[item.question] || ""}
-        onChange={(e) =>
-          handleChange(item.question, e.target.value)
-        }
-      />
-    )}
-  </div>
-);
-      })}
-  {/* {((!isSubmitted) || isAppraiser) && ( */}
-  {(!isSubmitted) && (
-    <>
-      <button
-        onClick={saveDraft}
-        style={{
-          padding: "10px 20px",
-          fontSize: "14px",
-          marginTop: "20px",
-          marginRight: "10px"
-        }}
-      >
-        Save Draft
-      </button>
+          Save Draft
+        </button>
 
-      <button
-        onClick={async () => {
-          await saveDraft(); //save to db
-          setStep(2);
-          localStorage.setItem("step", "2");
-        }}
-        style={{
-          padding: "10px 20px",
-          fontSize: "14px",
-          marginTop: "20px",
-          marginRight: "10px"
-        }}
-      >
-        Save & Next
-      </button>
-    </>
-    )}
-</>
-)}
-
-{(step === 2 || isSubmitted) && (
-  <>
-    <h3 style={{ textAlign: "center", marginTop: "20px" }}>
-      SECTION 2: APPRAISEE & APPRAISER'S ASSESSMENT ON PERFORMANCE
-    </h3>
-	<p style={{ textAlign: 'center' }}>(To be completed by the Appraisee as well as Appraiser.)</p>
-
-    <table border="1" cellPadding="6" style={{ width: "100%", fontSize: "14px" }}>
-      <thead>
-        <tr>
-          <th>Attributes</th>
-          <th>Description</th>
-          <th>Score</th>
-          <th>Appraisee</th>
-          <th>Appraiser</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {section2Data.map((attr, i) => (
-          <React.Fragment key={i}>
-            {/* Attribute Title Row */}
-            <tr>
-              <td colSpan="5" style={{ fontWeight: "bold", background: "#eee" }}>
-                {i + 1}. {attr.title}
-              </td>
-            </tr>
-
-            {/* Description Rows */}
-            {attr.items.map((item, j) => (
-              <tr key={j}>
-                <td>{item.label}</td>
-                <td>{item.desc}</td>
-                <td style={{ textAlign: "center" }}>{item.score}</td>
-
-                {/* Appraisee */}
-                <td style={{ textAlign: "center" }}>
-                  <input
-                    disabled={
-                      isSubmitted ||
-                      role !== "appraisee"
-                    }
-                    type="radio"
-                    name={`appraisee-${i}`}
-                    value={item.score}
-                    checked={responses[`appraisee-${i}`] === String(item.score)}
-                    onChange={(e) =>
-                      handleChange(`appraisee-${i}`, e.target.value)
-                    }
-                  />
-                </td>
-
-                {/* Appraiser */}
-                <td style={{
-                  textAlign: "center",
-                  background: role !== "appraiser" ? "#f5f5f5" : "white"
-                  }}>
-                  <input
-                    disabled={
-                      // isSubmitted ||
-                      role !== "appraiser"
-                    }
-                    type="radio"
-                    name={`appraiser-${i}`}
-                    value={item.score}
-                    checked={responses[`appraiser-${i}`] === String(item.score)}
-                    onChange={(e) =>
-                      handleChange(`appraiser-${i}`, e.target.value)
-                    }
-                  />
-                </td>
-              </tr>
-            ))}
-          </React.Fragment>
-        ))}
-      </tbody>
-    </table>
-
-    {/* 🔹 Score */}
-    <h3 style={{ marginTop: "10px" }}>
-      Appraisee Score: {calculateScore()} / 40
-    </h3>
-    <h3 style={{ marginTop: "10px" }}>
-      Appraiser Score: {calculateTotal()} / 40
-      </h3>
-	<p style={{ textAlign: 'center' }}>Over All Rating (Total Score - 40),
-	10 to 15 = POOR,
-	16-25 = AVERAGE,
-	26-35 = GOOD,
-	36 and above  = EXCELLENT</p>
-
-    {/* 🔹 Rating */}
-    <h4>
-      Rating: {
-        calculateScore() <= 15 ? "POOR" :
-        calculateScore() <= 25 ? "AVERAGE" :
-        calculateScore() <= 35 ? "GOOD" :
-        "EXCELLENT"
-      }
-    </h4>
-
-    {/* 🔹 Navigation */}
-    {!isSubmitted && (
-      <button
-        onClick={() => {
-          setStep(1);
-          localStorage.setItem("step", "2");
-        }} 
-        style={{ 
-          marginLeft: "10px", 
-          padding: "10px 20px", 
-          marginTop: "20px" 
-        }}
+        <button
+          onClick={async () => {
+            await saveDraft(); //save to db
+            setStep(2);
+            localStorage.setItem("step", "2");
+          }}
+          style={{
+            padding: "10px 20px",
+            fontSize: "14px",
+            marginTop: "20px",
+            marginRight: "10px"
+          }}
         >
-          Back
-      </button>
-    )}
-  {(!isSubmitted) && (
-   <>
-    <button
-        onClick={saveDraft}
-        style={{
-          padding: "10px 20px",
-          marginTop: "20px",
-          marginLeft: "10px"
-        }}
-      >
-        Save Draft
-    </button>
-    </>
-    )}
-    {((!isSubmitted) || isAppraiser) && (
-      <>
-    <button
-      onClick={handleSubmit}
-	// onClick={async () => {
-	//     handleSubmit();
-  //   }}
-	    style={{ marginLeft: "10px", padding: "10px 20px" }}>
-      {isAppraiser ? "Submit Appraiser Review" : "Save & Submit"}
-      {/* Save & Submit */}
-    </button>
+          Save & Next
+        </button>
+      </>
+      )}
   </>
   )}
 
-  </>
-)}
+  {(step === 2 || isSubmitted) && (
+    <>
+      <h3 style={{ textAlign: "center", marginTop: "20px" }}>
+        SECTION 2: APPRAISEE & APPRAISER'S ASSESSMENT ON PERFORMANCE
+      </h3>
+    <p style={{ textAlign: 'center' }}>(To be completed by the Appraisee as well as Appraiser.)</p>
+
+      <table border="1" cellPadding="6" style={{ width: "100%", fontSize: "14px" }}>
+        <thead>
+          <tr>
+            <th>Attributes</th>
+            <th>Description</th>
+            <th>Score</th>
+            <th>Appraisee</th>
+            <th>Appraiser</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {section2Data.map((attr, i) => (
+            <React.Fragment key={i}>
+              {/* Attribute Title Row */}
+              <tr>
+                <td colSpan="5" style={{ fontWeight: "bold", background: "#eee" }}>
+                  {i + 1}. {attr.title}
+                </td>
+              </tr>
+
+              {/* Description Rows */}
+              {attr.items.map((item, j) => (
+                <tr key={j}>
+                  <td>{item.label}</td>
+                  <td>{item.desc}</td>
+                  <td style={{ textAlign: "center" }}>{item.score}</td>
+
+                  {/* Appraisee */}
+                  <td style={{ textAlign: "center" }}>
+                    <input
+                      disabled={
+                        isSubmitted ||
+                        role !== "appraisee"
+                      }
+                      type="radio"
+                      name={`appraisee-${i}`}
+                      value={item.score}
+                      checked={responses[`appraisee-${i}`] === String(item.score)}
+                      onChange={(e) =>
+                        handleChange(`appraisee-${i}`, e.target.value)
+                      }
+                    />
+                  </td>
+
+                  {/* Appraiser */}
+                  <td style={{
+                    textAlign: "center",
+                    background: role !== "appraiser" ? "#f5f5f5" : "white"
+                    }}>
+                    <input
+                      disabled={
+                        // isSubmitted ||
+                        role !== "appraiser"
+                      }
+                      type="radio"
+                      name={`appraiser-${i}`}
+                      value={item.score}
+                      checked={responses[`appraiser-${i}`] === String(item.score)}
+                      onChange={(e) =>
+                        handleChange(`appraiser-${i}`, e.target.value)
+                      }
+                    />
+                  </td>
+                </tr>
+              ))}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+
+      {/* 🔹 Score */}
+        <div style={{ marginTop: "20px" }}>
+          <h3>Summary</h3>
+          <p><b>Appraisee Score:</b> {calculateScoreByRole("appraisee")} / 40</p>
+          <p><b>Appraiser Score:</b> {calculateScoreByRole("appraiser")} / 40</p>
+        </div>
+    <p style={{ textAlign: 'center' }}>Over All Rating (Total Score - 40),
+    10 to 15 = POOR,
+    16-25 = AVERAGE,
+    26-35 = GOOD,
+    36 and above  = EXCELLENT</p>
+
+      {/* 🔹 Rating */}
+      <h4>
+        Rating: {
+          calculateScoreByRole(isAppraiser ? "appraiser" : "appraisee") <= 15
+            ? "POOR"
+            : calculateScoreByRole(isAppraiser ? "appraiser" : "appraisee") <= 25
+            ? "AVERAGE"
+            : calculateScoreByRole(isAppraiser ? "appraiser" : "appraisee") <= 35
+            ? "GOOD"
+            : "EXCELLENT"
+        }
+      </h4>
+
+      {/* 🔹 Navigation */}
+      {!isSubmitted && (
+        <button
+          onClick={() => {
+            setStep(1);
+            localStorage.setItem("step", "2");
+          }} 
+          style={{ 
+            marginLeft: "10px", 
+            padding: "10px 20px", 
+            marginTop: "20px" 
+          }}
+          >
+            Back
+        </button>
+      )}
+    {(!isSubmitted) && (
+    <>
+      <button
+          onClick={saveDraft}
+          style={{
+            padding: "10px 20px",
+            marginTop: "20px",
+            marginLeft: "10px"
+          }}
+        >
+          Save Draft
+      </button>
+      </>
+      )}
+      {((!isSubmitted) || isAppraiser) && (
+        <>
+      <button
+        onClick={handleSubmit}
+    // onClick={async () => {
+    //     handleSubmit();
+    //   }}
+        style={{ marginLeft: "10px", padding: "10px 20px" }}>
+        {isAppraiser ? "Submit Appraiser Review" : "Save & Submit"}
+        {/* Save & Submit */}
+      </button>
+      <button
+        onClick={exportPDF}
+        style={{ marginLeft: "10px", padding: "10px 20px" }}
+      >
+        📄 Export PDF
+      </button>
+      <button
+        onClick={() => window.print()}
+        style={{ marginLeft: "10px", padding: "10px 20px" }}
+      >
+        🖨 Print
+      </button>
+    </>
+    )}
+
+    </>
+  )}
     </div>
   );
 }
