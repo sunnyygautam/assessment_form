@@ -528,6 +528,50 @@ app.post("/api/admin/submit/:userId", verifyToken, upload.any(), async (req, res
   }
 });
 
+//ADMIN DELETE
+app.delete("/api/admin/assessment/:userId", verifyToken, async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // await pool.query(
+    //   `DELETE FROM assessments WHERE user_id = $1`,
+    //   [userId]
+    // );
+    await pool.query(
+      `UPDATE assessments 
+      SET status = 'draft', data = '{}'
+      WHERE user_id = $1`,
+      [userId]
+    );
+
+    res.json({ message: "Assessment deleted" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error deleting assessment");
+  }
+});
+
+//ADMIN REJECT
+app.post("/api/admin/reject/:userId", verifyToken, async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    await pool.query(
+      `UPDATE assessments 
+      SET status = 'draft' 
+      WHERE user_id = $1`,
+      [userId]
+    );
+
+    res.json({ message: "Assessment deleted" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error deleting assessment");
+  }
+});
+
   // 🔥 Serve React build
   app.use(express.static(path.join(__dirname, "build")));
   app.use("/uploads", express.static("uploads"));

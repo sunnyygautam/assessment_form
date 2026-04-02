@@ -6,6 +6,46 @@ function AdminDashboard({ onLogout, onSelectUser }) {
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const handleDelete = async (userId) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this assessment?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await api.delete(`/api/admin/assessment/${userId}`);
+
+      alert("Assessment deleted successfully");
+
+      // 🔥 refresh table
+      fetchData();
+
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting assessment");
+    }
+  };
+  const handleReject = async (userId) => {
+    const confirmReject = window.confirm(
+      "Are you sure you want to reject this assessment?"
+    );
+
+    if (!confirmReject) return;
+
+    try {
+      await api.post(`/api/admin/reject/${userId}`);
+
+      alert("Assessment rejected successfully");
+
+      // 🔥 refresh table
+      fetchData();
+
+    } catch (err) {
+      console.error(err);
+      alert("Error rejecting assessment");
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -122,6 +162,18 @@ function AdminDashboard({ onLogout, onSelectUser }) {
                   }
                 >
                   ✏️ Open Form
+                </button>
+                <button
+                  style={{ marginLeft: "10px", color: "red" }}
+                  onClick={() => handleReject(item.user_id)}
+                >
+                  Reject
+                </button>
+                <button
+                  style={{ marginLeft: "10px", color: "red" }}
+                  onClick={() => handleDelete(item.user_id)}
+                >
+                  Delete
                 </button>
                 </td>
             </tr>
