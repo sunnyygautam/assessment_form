@@ -151,35 +151,42 @@ function App() {
 
   // Export Function
   const exportPDF = async () => {
-  const element = formRef.current;
+    const element = formRef.current;
 
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true
-  });
+    // 🔥 Hide buttons temporarily
+    const buttons = document.querySelectorAll(".no-print");
+    buttons.forEach(btn => btn.style.display = "none");
 
-  const imgData = canvas.toDataURL("image/png");
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true
+    });
 
-  const pdf = new jsPDF("p", "mm", "a4");
+    // 🔥 Restore buttons
+    buttons.forEach(btn => btn.style.display = "inline-block");
 
-  const imgWidth = 210;
-  const pageHeight = 295;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const imgData = canvas.toDataURL("image/png");
 
-  let heightLeft = imgHeight;
-  let position = 0;
+    const pdf = new jsPDF("p", "mm", "a4");
 
-  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+    const imgWidth = 210;
+    const pageHeight = 295;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
+    let heightLeft = imgHeight;
+    let position = 0;
+
     pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
-  }
 
-  pdf.save("Appraisal_Form.pdf");
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    pdf.save("Appraisal_Form.pdf");
   };
 
   useEffect(() => {
@@ -392,13 +399,14 @@ function App() {
     <div style={{ position: "absolute", right: "20px", top: "20px" }}>
       {role === "appraiser" && selectedUser && (
         <button 
+          className="no-print"
           onClick={() => setSelectedUser(null)}
           style={{ marginBottom: "10px" }}
         >
           ← Back to Dashboard
         </button>
       )}
-     <button onClick={handleLogout} style={{marginLeft: "10px"}}>Logout</button>
+     <button className="no-print" onClick={handleLogout} style={{marginLeft: "10px"}}>Logout</button>
     </div>
       <h2 style={{ textAlign: "center" }}>
         TLMTI STAFF PERFORMANCE ASSESSMENT 2025
@@ -759,10 +767,10 @@ function App() {
           <p><b>Appraiser Score:</b> {calculateScoreByRole("appraiser")} / 40</p>
         </div>
     <p style={{ textAlign: 'center' }}>Over All Rating (Total Score - 40),
-    10 to 15 = POOR,
-    16-25 = AVERAGE,
-    26-35 = GOOD,
-    36 and above  = EXCELLENT</p>
+    (10 to 15 = POOR),
+    (16-25 = AVERAGE),
+    (26-35 = GOOD),
+    (36 and above  = EXCELLENT)</p>
 
       {/* 🔹 Rating */}
       <h4>
@@ -810,21 +818,23 @@ function App() {
       {((!isSubmitted) || isAppraiser) && (
         <>
       <button
+        className="no-print"
         onClick={handleSubmit}
     // onClick={async () => {
     //     handleSubmit();
     //   }}
         style={{ marginLeft: "10px", padding: "10px 20px" }}>
         {isAppraiser ? "Submit Appraiser Review" : "Save & Submit"}
-        {/* Save & Submit */}
       </button>
       <button
+        className="no-print"
         onClick={exportPDF}
         style={{ marginLeft: "10px", padding: "10px 20px" }}
       >
         📄 Export PDF
       </button>
       <button
+        className="no-print"
         onClick={() => window.print()}
         style={{ marginLeft: "10px", padding: "10px 20px" }}
       >

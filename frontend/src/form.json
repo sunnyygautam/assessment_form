@@ -89,7 +89,8 @@
         {
           "label": "J. Recommended for Promotion / Confirmation / Extension of contract (if applicable)?",
           "type": "radio",
-          "options": ["Yes", "No"]
+          "options": ["Yes", "No"],
+          "role": "appraiser"
         }
       ]
     },
