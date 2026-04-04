@@ -66,9 +66,9 @@ function App() {
         const value = responses[key];
 
         if (value instanceof File) {
-          formPayload.append(key, value);
+          formPayload.append(key, value); // ✅ ALWAYS send file
         } else {
-          formPayload.append(key, value);
+          formPayload.append(key, value); // ✅ send all text
         }
       });
 
@@ -85,15 +85,15 @@ function App() {
       const data = res.data.data;
 
       // ✅ FIXED mapping
-      if (data.uploadedFiles?.length > 0) {
-        const fileField = formData.section1
-          .flatMap(item => item.fields || [])
-          .find(field => field.type === "file");
+      // if (data.uploadedFiles?.length > 0) {
+      //   const fileField = formData.section1
+      //     .flatMap(item => item.fields || [])
+      //     .find(field => field.type === "file");
 
-        if (fileField) {
-          data[fileField.label] = data.uploadedFiles[0];
-        }
-      }
+      //   if (fileField) {
+      //     data[fileField.label] = data.uploadedFiles[0];
+      //   }
+      // }
 
       // ✅ FIXED
       setResponses(data);
@@ -226,15 +226,15 @@ function App() {
 
         const data = apiData?.data || {};
           // 🔥 map uploadedFiles to field
-          if (data.uploadedFiles?.length > 0) {
-            const fileField = formData.section1
-              .flatMap(item => item.fields || [])
-              .find(field => field.type === "file");
+          // if (data.uploadedFiles?.length > 0) {
+          //   const fileField = formData.section1
+          //     .flatMap(item => item.fields || [])
+          //     .find(field => field.type === "file");
 
-            if (fileField) {
-              data[fileField.label] = data.uploadedFiles[0];
-            }
-          }
+          //   if (fileField) {
+          //     data[fileField.label] = data.uploadedFiles[0];
+          //   }
+          // }
           if (data) {
           setResponses(data);
           console.log("Loaded responses:", data);

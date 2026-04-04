@@ -19,24 +19,12 @@ const upload = multer({ storage });
 
 const app = express();
 app.use(cors({
-  origin: "http://localhost:3000",
-  // origin: true,
+  // origin: "http://localhost:3000",
+  origin: true,
   // methods: ["GET", "POST", "DELETE"],
   // allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
-// app.use((req, res, next) => {
-//   res.header("Access-Control-Allow-Origin", "http://localhost:3000");
-//   res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-//   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-//   res.header("Access-Control-Allow-Credentials", "true");
-
-//   if (req.method === "OPTIONS") {
-//     return res.sendStatus(200);
-//   }
-
-//   next();
-// });
 
 app.use(express.json());
 
@@ -198,18 +186,28 @@ app.post("/api/draft", verifyToken, upload.any(), async (req, res) => {
     // };
     const role = req.user.role; // 🔥 IMPORTANT
 
+    //IGNORE FILE FIELD FROM req.body
     const filteredBody = filterFieldsByRole(req.body, role);
 
-    let newData = {
-      ...existingData,
-      ...filteredBody
-    };
+    let newData = { ...existingData };
+
+    Object.keys(filteredBody).forEach(key => {
+      const value = filteredBody[key];
+
+      // ❌ Skip file fields from body (VERY IMPORTANT)
+      if (typeof value === "string" && value.includes(".pdf")) {
+        return;
+      }
+
+      if (value !== undefined && value !== "") {
+        newData[key] = value;
+      }
+    });
 
     // 🔥 attach files
     if (req.files && req.files.length > 0) {
-      // req.files.forEach(file => {
-      //   newData[file.fieldname] = file.filename;
-      // });
+      console.log("BODY:", req.body);
+      console.log("FILES:", req.files);
       req.files.forEach(file => {
         const key = file.fieldname;
 
@@ -218,9 +216,9 @@ app.post("/api/draft", verifyToken, upload.any(), async (req, res) => {
             newData[key] = file.filename;
           }
         } else {
-          if (!key.toLowerCase().includes("appraiser")) {
+          // if (!key.toLowerCase().includes("appraiser")) {
             newData[key] = file.filename;
-          }
+          // }
         }
       });
     }
@@ -303,9 +301,9 @@ app.post("/api/submit", verifyToken, upload.any(), async (req, res) => {
             newData[key] = file.filename;
           }
         } else {
-          if (!key.toLowerCase().includes("appraiser")) {
+          // if (!key.toLowerCase().includes("appraiser")) {
             newData[key] = file.filename;
-          }
+          // }
         }
       });
     }
