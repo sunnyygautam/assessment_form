@@ -6,6 +6,7 @@ function AdminDashboard({ onLogout, onSelectUser }) {
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  
   const handleDelete = async (userId) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this assessment?"
@@ -95,6 +96,38 @@ function AdminDashboard({ onLogout, onSelectUser }) {
     return matchesName && matchesStatus;
   });
 
+  const downloadPDF = async (userId) => {
+    try {
+      const res = await api.get(`/api/pdf/${userId}`, {
+        responseType: "blob"
+      });
+
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `appraisal_${userId}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+
+    } catch (err) {
+      console.error("PDF Error:", err);
+
+      // ✅ ONLY show error if backend actually failed
+      if (err.response && err.response.status !== 200) {
+        alert("Error downloading PDF");
+      }
+
+      // ❌ REMOVE this
+      // if (!err.response) alert(...)
+    }
+  };
+
   return (
     <div style={{ padding: "20px" }}>
       <h2>📊 Admin Dashboard</h2>
@@ -173,7 +206,15 @@ function AdminDashboard({ onLogout, onSelectUser }) {
                   style={{ marginLeft: "10px", color: "red" }}
                   onClick={() => handleDelete(item.user_id)}
                 >
-                  Delete
+                  Reset
+                </button>
+                <button
+                  style={{ marginLeft: "10px" }}
+                  onClick={() =>
+                    downloadPDF(item.user_id)
+                  }
+                >
+                  📄 Download Server PDF
                 </button>
                 </td>
             </tr>

@@ -3,6 +3,11 @@ const cors = require("cors");
 const pool = require("./db");
 const path = require("path");
 const multer = require("multer");
+
+const PDFDocument = require("pdfkit");
+const fs = require("fs");
+// const path = require("path");
+
 const storage = multer.diskStorage({
   destination: "uploads/",
   filename: (req, file, cb) => {
@@ -13,7 +18,26 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:3000",
+  // origin: true,
+  // methods: ["GET", "POST", "DELETE"],
+  // allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+// app.use((req, res, next) => {
+//   res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+//   res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+//   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+//   res.header("Access-Control-Allow-Credentials", "true");
+
+//   if (req.method === "OPTIONS") {
+//     return res.sendStatus(200);
+//   }
+
+//   next();
+// });
+
 app.use(express.json());
 
 const jwt = require("jsonwebtoken");
@@ -569,6 +593,122 @@ app.post("/api/admin/reject/:userId", verifyToken, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error deleting assessment");
+  }
+});
+
+//Create PDF API
+app.get("/api/pdf/:userId", verifyToken, async (req, res) => {
+  const { userId } = req.params;
+  if (req.user.role !== "appraiser" && req.user.id != userId) {
+    return res.status(403).send("Unauthorized");
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM assessments WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).send("No data found");
+    }
+
+    // const data = result.rows[0].data || {};
+    let data = result.rows[0].data || {};
+
+    if (typeof data === "string") {
+      data = JSON.parse(data);
+    }
+
+    const doc = new PDFDocument({ margin: 40 });
+    // ✅ CORS FIX (IMPORTANT)
+    res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    // ✅ PDF HEADERS
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=appraisal_${userId}.pdf`
+    );
+    doc.pipe(res);
+
+    // 🧾 HEADER
+    doc
+      .fontSize(18)
+      .text("Employee Performance Appraisal", { align: "center" });
+
+    doc.moveDown();
+    doc.fontSize(12).text(`User ID: ${userId}`);
+    doc.moveDown();
+
+    // 🟢 SECTION 1
+    doc.fontSize(14).text("Section 1: Employee Details", { underline: true });
+    doc.moveDown();
+
+    Object.keys(data).forEach((key) => {
+      if (!key.startsWith("appraisee-") && !key.startsWith("appraiser-")) {
+        doc.fontSize(10).text(`${key}: ${data[key]}`);
+      }
+    });
+
+    doc.moveDown();
+
+    // 🟢 SECTION 2 (Scores)
+    doc.fontSize(14).text("Section 2: Performance Scores", { underline: true });
+    doc.moveDown();
+
+    let appraiseeTotal = 0;
+    let appraiserTotal = 0;
+
+    const totalQuestions = 10; // or dynamic later
+
+    for (let i = 0; i < totalQuestions; i++) {
+    // for (let i = 0; i < 10; i++) {
+      const appraiseeVal = Number(data[`appraisee-${i}`] || 0);
+      const appraiserVal = Number(data[`appraiser-${i}`] || 0);
+
+      appraiseeTotal += appraiseeVal;
+      appraiserTotal += appraiserVal;
+
+      doc.text(
+        `Q${i + 1}: Appraisee: ${appraiseeVal} | Appraiser: ${appraiserVal}`
+      );
+    }
+
+    doc.moveDown();
+
+    // 🟢 SUMMARY
+    doc.fontSize(14).text("Summary", { underline: true });
+    doc.moveDown();
+
+    doc.text(`Appraisee Score: ${appraiseeTotal}`);
+    doc.text(`Appraiser Score: ${appraiserTotal}`);
+
+    // 🟢 RATING
+    const rating =
+      appraiserTotal <= 15
+        ? "POOR"
+        : appraiserTotal <= 25
+        ? "AVERAGE"
+        : appraiserTotal <= 35
+        ? "GOOD"
+        : "EXCELLENT";
+
+    doc.text(`Rating: ${rating}`);
+
+    doc.moveDown();
+
+    // 🟢 SIGNATURES
+    doc.moveDown();
+    doc.text("Appraisee Signature: __________________");
+    doc.text("Appraiser Signature: __________________");
+
+    doc.end();
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error generating PDF");
   }
 });
 

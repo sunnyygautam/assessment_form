@@ -840,6 +840,13 @@ function App() {
       >
         🖨 Print
       </button>
+      {/* <button
+        onClick={() =>
+          window.open(`${process.env.REACT_APP_API_URL}/api/pdf/${selectedUser?.userId || ""}`)
+        }
+      >
+        📄 Download Server PDF
+      </button> */}
     </>
     )}
 
